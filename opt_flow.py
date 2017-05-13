@@ -80,12 +80,14 @@ looper_thread = Thread(name='looper', target=looper)
 
 looper_thread.start()
 
+creepy_tone = False
+
 
 def play_tone(faces):
     global tickCount
     global tone
     global rate
-
+    amp = len(faces)
     for (x, y, w, h) in faces:
         rate = (y / screenheight) * 1.5 + 0.2
         pan = (x / screenwidth) - screenwidth / 2
@@ -99,7 +101,9 @@ def play_tone(faces):
         #     pan = 1
         # else:
         #     tone = 100
-        play(tone, pan=pan)
+        if creepy_tone:
+            play(tone, pan=pan, amp=amp)
+        sample(VINYL_HISS)
 
 
 def draw_faces(faces, frame):
@@ -179,51 +183,49 @@ def warp_flow(img, flow):
     res = cv2.remap(img, flow, None, cv2.INTER_LINEAR)
     return res
 
+
+class Dance(object):
+    def __init__(self):
+        self.cam = video.create_capture(0)
+        self.cam.set(3, screenwidth)
+        self.cam.set(4, screenheight)
+        import time
+        time.sleep(1)
+        ret, prev = cam.read()
+        prevgray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+        self.show_hsv = False
+        self.main_loop(prevgray)
+
+    def main_loop(self, prevgray):
+        self.prevgray = prevgray
+
+        while True:
+            ret, img = cam.read()
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            flow = cv2.calcOpticalFlowFarneback(
+                self.prevgray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+            self.prevgray = gray
+
+            faces = find_faces(gray)
+            draw_faces(faces, gray)
+            play_tone(faces)
+            cv2.imshow('flow', draw_flow(gray, flow))
+            if self.show_hsv:
+                cv2.imshow('flow HSV', draw_hsv(flow))
+
+            ch = 0xFF & cv2.waitKey(5)
+            if ch == 27:
+                break
+            if ch == ord('1'):
+                show_hsv = not show_hsv
+                print('HSV flow visualization is', ['off', 'on'][show_hsv])
+            if ch == ord('2'):
+                # show_glitch = not show_glitch
+                # if show_glitch:
+                #     cur_glitch = img.copy()
+                # print('glitch is', ['off', 'on'][show_glitch])
+                pass
+        cv2.destroyAllWindows()
+
 if __name__ == '__main__':
-    import sys
-    print(__doc__)
-    try:
-        fn = sys.argv[1]
-    except IndexError:
-        fn = 0
-
-    cam = video.create_capture(fn)
-    cam.set(3, screenwidth)
-    cam.set(4, screenheight)
-    import time
-    time.sleep(1)
-    ret, prev = cam.read()
-    prevgray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
-    show_hsv = False
-    show_glitch = False
-    cur_glitch = prev.copy()
-
-    while True:
-        ret, img = cam.read()
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        flow = cv2.calcOpticalFlowFarneback(
-            prevgray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-        prevgray = gray
-
-        faces = find_faces(gray)
-        draw_faces(faces, gray)
-        play_tone(faces)
-        cv2.imshow('flow', draw_flow(gray, flow))
-        if show_hsv:
-            cv2.imshow('flow HSV', draw_hsv(flow))
-        if show_glitch:
-            cur_glitch = warp_flow(cur_glitch, flow)
-            cv2.imshow('glitch', cur_glitch)
-
-        ch = 0xFF & cv2.waitKey(5)
-        if ch == 27:
-            break
-        if ch == ord('1'):
-            show_hsv = not show_hsv
-            print('HSV flow visualization is', ['off', 'on'][show_hsv])
-        if ch == ord('2'):
-            show_glitch = not show_glitch
-            if show_glitch:
-                cur_glitch = img.copy()
-            print('glitch is', ['off', 'on'][show_glitch])
-    cv2.destroyAllWindows()
+    Dance()
