@@ -52,25 +52,54 @@ def find_faces(frame):
     return faces
 
 
+from threading import Thread
+
+
+rate = 1.5
+
+
+def drum_loop():
+    global rate
+
+    sample(LOOP_AMEN, rate=rate)
+    print('drum_loop entered')
+    sleep(1)
+
+
+drum_looping = True
+
+
+def looper():
+    global drum_looping
+
+    while drum_looping:
+        drum_loop()
+
+
+looper_thread = Thread(name='looper', target=looper)
+
+looper_thread.start()
+
+
 def play_tone(faces):
     global tickCount
     global tone
+    global rate
 
     for (x, y, w, h) in faces:
-        if x < screenwidth / 3:
-            tone = 70
-            pan = -1
-        elif x < screenwidth * 2 / 3:
-            tone = 80
-            pan = 0
-        elif x <= screenwidth:
-            tone = 90
-            pan = 1
-        else:
-            tone = 100
-        # if y < screenheight / 3:
-
-        play(tone,pan = pan)
+        rate = (y / screenheight) * 1.5 + 0.2
+        pan = (x / screenwidth) - screenwidth / 2
+        tone = (x / screenwidth) * 30 + 70
+        # if x < screenwidth / 3:
+        #     tone = 70
+        # elif x < screenwidth * 2 / 3:
+        #     tone = 80
+        # elif x <= screenwidth:
+        #     tone = 90
+        #     pan = 1
+        # else:
+        #     tone = 100
+        play(tone, pan=pan)
 
 
 def draw_faces(faces, frame):
