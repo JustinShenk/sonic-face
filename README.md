@@ -1,4 +1,4 @@
-### Sonic Pi + OpenCV
+# Sonic Pi + OpenCV
 
 Playing instrument loops using face detection.
 
