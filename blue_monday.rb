@@ -7,7 +7,7 @@ use_debug false
 load_samples [:drum_heavy_kick, :drum_snare_soft]
 use_bpm (64)
 
-dir = "/Users/justinshenk/Projects/dance/"
+dir = "/Users/justinshenk/Projects/dance/samples"
 
 $settings = sync "/notesend"
 $faces = $settings[0]
