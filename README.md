@@ -11,9 +11,9 @@ git clone https://github.com/JustinShenk/sonic-face.git
 cd sonic-face
 ```
 
-Change the `dir` path in Sonic Pi to the path on your computer, e.g., `/path/to/sonic-face/samples`.
+Open Sonic Pi and load the `.rb` file. Change the `dir` path to the path on your computer, e.g., `/path/to/sonic-face/samples`.
 
-Open Sonic Pi and load the `.rb` file, run it, and then open the `.pde` file in Processing. You may need to install OpenCV and other dependencies in Processing.
+Run the file and then open the `.pde` file in Processing. You may need to install OpenCV and other dependencies in Processing.
 
 ## How it works
 
