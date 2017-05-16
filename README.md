@@ -17,11 +17,20 @@ Run the file and then open the `.pde` file in Processing. You may need to instal
 
 ## How it works
 
-Instruments are cued by the presence of faces. The `d` key can be used to debug, followed by the number of faces (5 for the maximum). 
+Instruments are cued by the presence of faces. The `d` key can be used to debug, followed by the number of faces (5 for the maximum). The `o` key activates optical flow.
 
+## TODO
+
+ - [X] Presence of faces triggers hierarchy of instruments (Beat, Clap, Cello + Snare, Mod Saw, and Vocals)
+ - [ ] Proximity of faces determines volume of instruments
+ - [ ] Instantaneous activation of instrument by parsing loops
+ - [ ] Hand-activated direction of music
+ - [ ] Brightest point activation of music
+ - [ ] Visualization of music (e.g., pulse) on the screen activated by triangle of instruments (faces or hands)
+ 
 ## Note
 
-Optical flow is currently active for testing purposes. Eventually it would be nice to add motion activation. A previous version used face position for panning, and that code is still present.
+Optical flow visualization is available for testing purposes. Eventually it would be nice to add motion activation. A previous version used face position for panning, and that code is still present.
 
 ## Contribute
 
