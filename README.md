@@ -19,7 +19,7 @@ Run the file and then open the `.pde` file in Processing. You may need to instal
 
 Instruments are cued by the presence of faces. The `d` key can be used to debug, followed by the number of faces (5 for the maximum). The `o` key activates optical flow.
 
-## TODO
+## Todo
 
  - [X] Presence of faces triggers hierarchy of instruments (Beat, Clap, Cello + Snare, Mod Saw, and Vocals)
  - [ ] Proximity of faces determines volume of instruments
