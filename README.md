@@ -15,13 +15,17 @@ Open Sonic Pi and load the `.rb` file. Change the `dir` path to the path on your
 
 Run the file and then open the `.pde` file in Processing. You may need to install OpenCV and other dependencies in Processing.
 
+## Demo
+![Early demo of the interface](interface_early_demo.gif)
+
 ## How it works
 
-Instruments are cued by the presence of faces. The `d` key can be used to debug, followed by the number of faces (5 for the maximum). The `o` key activates optical flow.
+Instruments are cued by the presence of faces. The `d` key can be used to debug, followed by the number of faces (5 for the maximum). The `o` key activates the user interface. The `up` key scrolls through modes.
 
 ## Todo
 
  - [X] Presence of faces triggers hierarchy of instruments (Beat, Clap, Cello + Snare, Mod Saw, and Vocals)
+ - [X] Users can cycle through instruments via an augmented reality interface
  - [ ] Proximity of faces determines volume of instruments
  - [ ] Instantaneous activation of instrument by parsing loops
  - [ ] Hand-activated direction of music
