@@ -101,7 +101,7 @@ void initializeUI() {
     int buttonX = activityBarX0 + i * activityButtonWidth;
     Rectangle rectangle = new Rectangle(
       buttonX, 
-      activityBarY0, 
+      activityBarY0,
       activityButtonWidth, 
       activityButtonHeight);
     //rectangle.setStroke(color(255));
@@ -142,6 +142,9 @@ void sendOscNote(int facesCount, int mode, int mx1, int mx2, int activeColumn) {
 }
 
 void draw() {
+  /**
+  * Main loop for drawing.
+  */
   // Set up environment
   noFill();
   scale(2);
@@ -204,7 +207,8 @@ void moveController(Rectangle[] faces) {
   //}
 }
 void drawController(Rectangle[] faces) {
-  // Draw selector wheel for each player
+  /** Draw selector wheel for each player.
+  */
   PVector[] controllerActivities = {};
   float angle = 2 * PI / divisions;
   for (int i = 0; i < faces.length && i < 4; i++) { // Limit to 4 faces for testing
@@ -273,7 +277,10 @@ void drawController(Rectangle[] faces) {
   }  
 }
 void drawFaces(Rectangle[] faces) {
-  // Draw face line, update text and faceRectangle data
+  /**
+  * Draw face line, update text and faceRectangle data.
+  * @ param  faces Array of face rectangles
+  */
   for (int i = 0; i < faces.length; i++) {  
     stroke(colorList[i% colorList.length]);
 
@@ -324,6 +331,8 @@ void drawFaces(Rectangle[] faces) {
 }
 
 void drawBrightestPoint() {
+  /* Draws the brights point on the screen.
+  */
   if (!brightPointMode) return;
   // Get brightest point
   loc = opencv.max();
@@ -351,7 +360,8 @@ void incrementMode(int delta) {
 }
 
 void drawLines() {
-  // Draw lines for columns
+  /* Draw lines for columns
+  */
   if (!brightPointMode) return;
 
   //drawColumns(); // Disabled
@@ -365,7 +375,8 @@ void drawLines() {
 }
 
 void drawColumns() {
-  // Disabled
+  // NOTE: Disabled
+  // TODO: Remove until useful
   for (int i = 1; i <= columns; i++) {
     stroke(180);
     strokeWeight(0.7);
@@ -413,7 +424,13 @@ void keyPressed() {
 
 
 PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMotion) {
-
+/**
+* This method gets motion within a rectanlge `r`.
+* @param  r          the rectangle surrounding the area
+* @param activityBar hack for selecting activityBar as the location
+* @param totalMotion using total motion vs average motion calculation
+* @return            the vector of motion in the rectangle
+*/
   PVector motion = new PVector();
   if (r.x + r.width > screenwidth) r.width = screenwidth - r.x -1;
   if (r.y + r.height > screenheight) r.height = screenheight - r.y -1;
@@ -434,9 +451,12 @@ PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMoti
   return motion;
 }
 void getFaceRatios(int i) {         
-  // Calculate proportion of faces at the end of drawing 5 faces.
-  // Reset non-player areas.
-  // Note: i+1 is the number of faces.
+  /**
+  * Calculate proportion of faces at the end of drawing 5 faces.
+  * Reset non-player areas.
+  * Note: i+1 is the number of faces.
+  * @param  i maximum number of faces present
+  */
   for (int nonplayer = i + 1; nonplayer < 5; nonplayer++) {
     faceSizes[nonplayer] = 0;
   }
@@ -455,6 +475,10 @@ void getFaceRatios(int i) {
 }
 
 void drawActivityBar() {
+  /** 
+  * Used for displaying arbitrary information. Currently disploys motion within buttons, visible 
+  * by pressing `b`.
+  */
   textFont(f, 10);  
   for (int button = 0; button < activityBar.length; button++) {
     PVector motion = getMotion(activityBar[button], button, true, false);
