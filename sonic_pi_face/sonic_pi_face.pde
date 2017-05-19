@@ -12,23 +12,20 @@ Capture video;
 OpenCV opencv;
 PFont f;   
 
-
-
 int screenheight = 240;
 int screenwidth = 320;
 int activityButtonWidth;
 
-
 String[] instruments = {"Beat", "Clap", "Cello + Snare", "Mod Saw", "Vocals"};
-int[] instrumentIndex = {0,1,2,3,4};
+int[] instrumentIndex = {0, 1, 2, 3, 4};
 int instrumentIndexOffset = 0;
 // TODO: Remove `mx` and `my` variable references
 int mx1=0;
 int my1;
 int mx2=0;
 int my2;
-
 int columns = 4;
+
 int facesCount = 0;
 PVector loc;
 int tempo;
@@ -101,7 +98,7 @@ void initializeUI() {
     int buttonX = activityBarX0 + i * activityButtonWidth;
     Rectangle rectangle = new Rectangle(
       buttonX, 
-      activityBarY0,
+      activityBarY0, 
       activityButtonWidth, 
       activityButtonHeight);
     //rectangle.setStroke(color(255));
@@ -143,8 +140,8 @@ void sendOscNote(int facesCount, int mode, int mx1, int mx2, int activeColumn) {
 
 void draw() {
   /**
-  * Main loop for drawing.
-  */
+   * Main loop for drawing.
+   */
   // Set up environment
   noFill();
   scale(2);
@@ -164,7 +161,7 @@ void draw() {
     textSize(8);  
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
-    drawActivityBar();  
+    drawActivityBar();
   }
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
@@ -208,7 +205,7 @@ void moveController(Rectangle[] faces) {
 }
 void drawController(Rectangle[] faces) {
   /** Draw selector wheel for each player.
-  */
+   */
   PVector[] controllerActivities = {};
   float angle = 2 * PI / divisions;
   for (int i = 0; i < faces.length && i < 4; i++) { // Limit to 4 faces for testing
@@ -220,25 +217,25 @@ void drawController(Rectangle[] faces) {
     // Draw spokes on selector
     float innerRadius = radius * 0.45;
     float outerRadius = radius * 0.55;
-    int j = selectorPosition[i]; // Default in up position for testing      
+    int j = selectorPosition[i]; // Default in vertical position      
     int referenceY = circleCenterY + int(innerRadius * sin(angle * j));
     int referenceX = circleCenterX + int(innerRadius * cos(angle * j));
     int targetY = circleCenterY + int(outerRadius * sin(angle * j));
     int targetX = circleCenterX + int(outerRadius * cos(angle * j));    
     line(referenceX, referenceY, targetX, targetY);
 
-    // Move the wheel
-    Rectangle clockwiseRotate = new Rectangle(circleCenterX, circleCenterY - face.height/2, face.width/2, face.height);    
+    // Move the wheel using the motion on the sides of the cirle
+    Rectangle clockwiseRotate = new Rectangle(circleCenterX + face.width/2, circleCenterY - face.height/2, face.width/2, face.height);    
     PVector clockwiseActivity = getMotion(clockwiseRotate, i, false, false);
     if (clockwiseActivity.mag() > 0.01) {
       selectorPosition[i]++;
       if (selectorPosition[i] > divisions - 1) {
         selectorPosition[i] = divisions - 1;
         // Draw line below face
-    stroke(255,0,0);
-    strokeWeight(3);
-    int lineLength = faces[i].width * selectorPosition[i] / divisions;
-    line(faces[i].x+lineLength, faces[i].y+faces[i].height-3, faces[i].x+lineLength, faces[i].y+faces[i].height+3);
+        stroke(255, 0, 0);
+        strokeWeight(3);
+        int lineLength = faces[i].width * selectorPosition[i] / divisions;
+        line(faces[i].x+lineLength, faces[i].y+faces[i].height-3, faces[i].x+lineLength, faces[i].y+faces[i].height+3);
       }
     }
     append(controllerActivities, clockwiseActivity);
@@ -252,35 +249,36 @@ void drawController(Rectangle[] faces) {
     int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
     if (clockwiseActivity.x > 0.01) {
       lineRightEnd = circleCenterX + int(clockwiseActivity.x * 100);
-      lineRightEnd = constrain(lineRightEnd,circleCenterX,circleCenterX + face.width/2);
+      lineRightEnd = constrain(lineRightEnd, circleCenterX, circleCenterX + face.width/2);
       stroke(229, 166, 93);
-      line(circleCenterX,circleCenterY,lineRightEnd,circleCenterY);
+      line(circleCenterX, circleCenterY, lineRightEnd, circleCenterY);
     }
     if (counterClockwiseActivity.x < -0.01) {
       lineLeftEnd = circleCenterX + int(counterClockwiseActivity.x * 100);
       lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
       stroke(229, 166, 93);
-      line(circleCenterX,circleCenterY,lineLeftEnd,circleCenterY);
+      line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
     }
     // User changes instrument if contralateral motion detected in controller
     if (clockwiseActivity.x > 0.1 
-    && counterClockwiseActivity.x < -0.1 
-    && changeInstrumentCountdown == 0) {
+      && counterClockwiseActivity.x < -0.1 
+      && changeInstrumentCountdown == 0) {
       strokeWeight(3);
-      ellipse(circleCenterX,circleCenterY,face.width,face.width);
+      ellipse(circleCenterX, circleCenterY, face.width, face.width);
       changeInstrumentCountdown = 10;
       faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];      
       for (int k = 1; k < faceTexts[0].length; k++) {    
         faceTexts[0][k-1] = faceTexts[0][k];
       }
-    }    
-  }  
+    }
+  }
+  readSigns(faces);
 }
 void drawFaces(Rectangle[] faces) {
   /**
-  * Draw face line, update text and faceRectangle data.
-  * @ param  faces Array of face rectangles
-  */
+   * Draw face line, update text and faceRectangle data.
+   * @ param  faces Array of face rectangles
+   */
   for (int i = 0; i < faces.length; i++) {  
     stroke(colorList[i% colorList.length]);
 
@@ -332,7 +330,7 @@ void drawFaces(Rectangle[] faces) {
 
 void drawBrightestPoint() {
   /* Draws the brights point on the screen.
-  */
+   */
   if (!brightPointMode) return;
   // Get brightest point
   loc = opencv.max();
@@ -361,7 +359,7 @@ void incrementMode(int delta) {
 
 void drawLines() {
   /* Draw lines for columns
-  */
+   */
   if (!brightPointMode) return;
 
   //drawColumns(); // Disabled
@@ -388,6 +386,54 @@ void drawText() {
   if (debugMode) {
     fill(255, 255, 255);  
     text("Debug Mode: " + str(facesCount) + " faces present", 10, 10);
+  }
+}
+
+void readSigns(Rectangle[] faces) {
+  /**
+   * Read signs on users' controllers
+   * @param  faces array of player face rectangles used for position
+   */
+  // Draw writing grid
+  int rows = 8;
+  int columns = 8;
+  float activationThreshold = 0.015;
+  PVector[] gridMotion = new PVector[rows*columns];
+  stroke(200, 200, 200);
+  strokeWeight(0.3);
+  for (int i = 0; i < faces.length; i++) {
+    // Draw grid
+    int gridX0 = faces[i].x;
+    int gridY0 = faces[i].y + int(faces[i].height * 1.5);  
+
+    // Show the grid
+    for (int j = 1; j < rows; j++) {
+      if (debugMode) line(gridX0, gridY0 + (j * faces[i].height) / rows, gridX0 + faces[i].width, gridY0 + (j * faces[i].height) / rows);
+      for (int k = 0; k < columns; k++) {
+        int boxWidth = faces[i].width / columns;
+        int boxHeight = faces[i].height / rows;
+        int boxULX = gridX0 + k * faces[i].width/ columns;
+        int boxULY = gridY0 + (j-1) * faces[i].height/ rows;
+        int boxURX = boxULX + boxWidth;
+        int boxURY = boxULY;
+        int boxBLX = boxULX;
+        int boxBLY = boxULY + boxHeight;
+        int boxBRX = boxBLX + boxWidth;
+        int boxBRY = boxBLY;
+        Rectangle box = new Rectangle(boxULX, boxULY, boxWidth, boxHeight);
+        PVector boxMotion = getMotion(box, j+ k * j, false, false); // FIXME: indexing
+        if (boxMotion.mag() > activationThreshold) {          
+          fill(204, 102, 0);            
+          rect(box.x, box.y, box.width, box.height);
+          noFill();
+        }
+        append(gridMotion, boxMotion);
+      }
+    }
+    for (int j = 1; j < columns; j++) {
+      if (debugMode) line(gridX0 + (j * faces[i].width) / columns, gridY0, gridX0 + j * faces[i].width / columns, gridY0 + faces[i].height);
+    }
+    resetStroke();
   }
 }
 void keyPressed() {
@@ -424,13 +470,13 @@ void keyPressed() {
 
 
 PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMotion) {
-/**
-* This method gets motion within a rectanlge `r`.
-* @param  r          the rectangle surrounding the area
-* @param activityBar hack for selecting activityBar as the location
-* @param totalMotion using total motion vs average motion calculation
-* @return            the vector of motion in the rectangle
-*/
+  /**
+   * This method gets motion within a rectanlge `r`.
+   * @param  r          the rectangle surrounding the area
+   * @param activityBar hack for selecting activityBar as the location
+   * @param totalMotion using total motion vs average motion calculation
+   * @return            the vector of motion in the rectangle
+   */
   PVector motion = new PVector();
   if (r.x + r.width > screenwidth) r.width = screenwidth - r.x -1;
   if (r.y + r.height > screenheight) r.height = screenheight - r.y -1;
@@ -452,11 +498,11 @@ PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMoti
 }
 void getFaceRatios(int i) {         
   /**
-  * Calculate proportion of faces at the end of drawing 5 faces.
-  * Reset non-player areas.
-  * Note: i+1 is the number of faces.
-  * @param  i maximum number of faces present
-  */
+   * Calculate proportion of faces at the end of drawing 5 faces.
+   * Reset non-player areas.
+   * Note: i+1 is the number of faces.
+   * @param  i maximum number of faces present
+   */
   for (int nonplayer = i + 1; nonplayer < 5; nonplayer++) {
     faceSizes[nonplayer] = 0;
   }
@@ -476,9 +522,9 @@ void getFaceRatios(int i) {
 
 void drawActivityBar() {
   /** 
-  * Used for displaying arbitrary information. Currently disploys motion within buttons, visible 
-  * by pressing `b`.
-  */
+   * Used for displaying arbitrary information. Currently disploys motion within buttons, visible 
+   * by pressing `b`.
+   */
   textFont(f, 10);  
   for (int button = 0; button < activityBar.length; button++) {
     PVector motion = getMotion(activityBar[button], button, true, false);
