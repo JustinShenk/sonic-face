@@ -12,14 +12,22 @@ Capture video;
 OpenCV opencv;
 PFont f;   
 
+
+
 int screenheight = 240;
 int screenwidth = 320;
 int activityButtonWidth;
 
+
+String[] instruments = {"Beat", "Clap", "Cello + Snare", "Mod Saw", "Vocals"};
+int[] instrumentIndex = {0,1,2,3,4};
+int instrumentIndexOffset = 0;
+// TODO: Remove `mx` and `my` variable references
 int mx1=0;
 int my1;
 int mx2=0;
 int my2;
+
 int columns = 4;
 int facesCount = 0;
 PVector loc;
@@ -36,6 +44,8 @@ int value = 0;
 float pan1 = 0;
 float pan2 = 0;
 int activeColumn = 0;
+int divisions = 16;
+int changeInstrumentCountdown;
 
 Rectangle[] activityBar = new Rectangle[4];
 PVector[] activityMeasure = {new PVector(0, 0), new PVector(0, 0), new PVector(0, 0), new PVector(0, 0)}; 
@@ -75,7 +85,6 @@ void setup() {
   sonicPi = new NetAddress("127.0.0.1", 4559);
   initializeUI();
 }
-
 void initializeUI() {    
   int activityBarX0 = screenwidth/6;
   int activityBarX1 = screenwidth * 5 / 6;
@@ -98,7 +107,7 @@ void initializeUI() {
     //rectangle.setStroke(color(255));
     //rectangle.setStrokeWeight(4);
     activityBar[i] = rectangle;    
-    text(buttons[i], buttonX, activityBarY0);
+    //text(buttons[i], buttonX, activityBarY0);
   }
 }
 
@@ -143,25 +152,32 @@ void draw() {
   faces = opencv.detect();
   image(opencv.getOutput(), 0, 0 );
 
-  if (isOpticalFlow) drawOpticalFlow();
-
+  if (isOpticalFlow) {
+    opencv.calculateOpticalFlow();
+    //opencv.drawOpticalFlow();    
+    // Reset stroke and text display
+    stroke(0, 255, 0);
+    strokeWeight(1);
+    textSize(8);  
+    textFont(f, 16);
+    drawController(faces); // Give each player an augmented reality controller
+    drawActivityBar();  
+  }
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
   if (mx2 == 0) mx2 = 320/2;
-
-  drawFaces(faces);
-  drawLines();
-  drawController(faces); // Give each player an augmented reality controller
-  moveController(faces);
   // Show brightest point for debugging
   drawBrightestPoint();
-  if (isOpticalFlow) drawActivityBar();
+  drawFaces(faces);
+  drawLines();
+  if (isOpticalFlow) {
+  }
   // Write debug, etc., on screen
   drawText();
   //tempo = int(100 * mx / (640./2) + 50);
   //amp = (2.0 * my) / (screenheight);
   //if (amp < 0.5) amp = 0.5;
-
+  updateTimers();
   sendOscNote(facesCount, mode, mx1, mx2, activeColumn);
   //sendOscNote(tempo, amp); //send the mx and my values to SP
   //sendOscNote(70+tickCount/100,80);
@@ -169,6 +185,10 @@ void draw() {
   //fill(204, 102, 0);  
   //text("Tempo: %" + str(tempo), 10, 200);
   //text("Volume: %" + str(amp), 10, 215);
+}
+
+void updateTimers() {
+  if (changeInstrumentCountdown > 0) changeInstrumentCountdown--;
 }
 
 void moveController(Rectangle[] faces) {
@@ -184,8 +204,8 @@ void moveController(Rectangle[] faces) {
   //}
 }
 void drawController(Rectangle[] faces) {
-  // Draw selector wheel
-  int divisions = 16;
+  // Draw selector wheel for each player
+  PVector[] controllerActivities = {};
   float angle = 2 * PI / divisions;
   for (int i = 0; i < faces.length && i < 4; i++) { // Limit to 4 faces for testing
     Rectangle face = faces[i];
@@ -204,12 +224,53 @@ void drawController(Rectangle[] faces) {
     line(referenceX, referenceY, targetX, targetY);
 
     // Move the wheel
-    if (activityMeasure[i].mag() > 0.01) {
+    Rectangle clockwiseRotate = new Rectangle(circleCenterX, circleCenterY - face.height/2, face.width/2, face.height);    
+    PVector clockwiseActivity = getMotion(clockwiseRotate, i, false, false);
+    if (clockwiseActivity.mag() > 0.01) {
       selectorPosition[i]++;
-      print("position for face " + i + ": " + selectorPosition[i]);
-      if (selectorPosition[i] > divisions - 1) selectorPosition[i] = 0;
+      if (selectorPosition[i] > divisions - 1) {
+        selectorPosition[i] = divisions - 1;
+        // Draw line below face
+    stroke(255,0,0);
+    strokeWeight(3);
+    int lineLength = faces[i].width * selectorPosition[i] / divisions;
+    line(faces[i].x+lineLength, faces[i].y+faces[i].height-3, faces[i].x+lineLength, faces[i].y+faces[i].height+3);
+      }
     }
-  }
+    append(controllerActivities, clockwiseActivity);
+    Rectangle counterClockwiseRotate = new Rectangle(circleCenterX-face.width/2, circleCenterY - face.height/2, face.width/2, face.height);
+    PVector counterClockwiseActivity = getMotion(counterClockwiseRotate, i, false, false);
+    if (counterClockwiseActivity.mag() > 0.01) {
+      selectorPosition[i]--;
+      if (selectorPosition[i] < 0) selectorPosition[i] = 0;
+    }
+    append(controllerActivities, counterClockwiseActivity);
+    int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
+    if (clockwiseActivity.x > 0.01) {
+      lineRightEnd = circleCenterX + int(clockwiseActivity.x * 100);
+      lineRightEnd = constrain(lineRightEnd,circleCenterX,circleCenterX + face.width/2);
+      stroke(229, 166, 93);
+      line(circleCenterX,circleCenterY,lineRightEnd,circleCenterY);
+    }
+    if (counterClockwiseActivity.x < -0.01) {
+      lineLeftEnd = circleCenterX + int(counterClockwiseActivity.x * 100);
+      lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
+      stroke(229, 166, 93);
+      line(circleCenterX,circleCenterY,lineLeftEnd,circleCenterY);
+    }
+    // User changes instrument if contralateral motion detected in controller
+    if (clockwiseActivity.x > 0.1 
+    && counterClockwiseActivity.x < -0.1 
+    && changeInstrumentCountdown == 0) {
+      strokeWeight(3);
+      ellipse(circleCenterX,circleCenterY,face.width,face.width);
+      changeInstrumentCountdown = 10;
+      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];      
+      for (int k = 1; k < faceTexts[0].length; k++) {    
+        faceTexts[0][k-1] = faceTexts[0][k];
+      }
+    }    
+  }  
 }
 void drawFaces(Rectangle[] faces) {
   // Draw face line, update text and faceRectangle data
@@ -225,7 +286,7 @@ void drawFaces(Rectangle[] faces) {
     }
 
     if (i ==0) {      
-      //control the with lateral motion
+      //control the wheel with lateral motion
       mx1 = faces[i].x + faces[i].width / 2;
       my1 = faces[i].y;
     } else if (i == 1) {
@@ -242,7 +303,10 @@ void drawFaces(Rectangle[] faces) {
     }
 
     // Draw line below face
-    line(faces[i].x, faces[i].y+faces[i].height, faces[i].x+faces[i].width, faces[i].y+faces[i].height);
+    strokeWeight(3);
+    int lineLength = faces[i].width * selectorPosition[i] / divisions;
+
+    line(faces[i].x, faces[i].y+faces[i].height, faces[i].x+lineLength, faces[i].y+faces[i].height);
   }
 
   if (!debugMode) {
@@ -347,29 +411,25 @@ void keyPressed() {
   }
 }
 
-void drawOpticalFlow() {
-  // Show movement using vector field
-  opencv.calculateOpticalFlow();
-  opencv.drawOpticalFlow();
-  //int columnWidth = screenwidth / 4;
-  //PVector column1Motion = opencv.getTotalFlowInRegion(0, 0, screenwidth/columns, screenheight);
-  stroke(0, 255, 0);
-  strokeWeight(1);
-  textSize(8);  
-  textFont(f, 16);  // Reset text size
-}
 
-PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMotion) {  
+PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMotion) {
+
   PVector motion = new PVector();
-  if (totalMotion)
-    motion = opencv.getTotalFlowInRegion(r.x, r.y, activityButtonWidth, 20);    
+  if (r.x + r.width > screenwidth) r.width = screenwidth - r.x -1;
+  if (r.y + r.height > screenheight) r.height = screenheight - r.y -1;
+  if (r.height < 1 || r.width < 1) {
+    return motion.set(0., 0.);
+  }
+  if (totalMotion) 
+    motion = opencv.getTotalFlowInRegion(r.x, r.y, r.width, r.height);    
   else
-    motion = opencv.getAverageFlowInRegion(r.x, r.y, activityButtonWidth, 20);
+    motion = opencv.getAverageFlowInRegion(r.x, r.y, r.width, r.height);
+
   // Update global motion
   if (activityBar) activityMeasure[index] = motion; 
   if (Float.isNaN(motion.x) || Float.isNaN(motion.y)) {
     //print("motion set to zero", "R:", r.x, r.y, r.width, r.height, "buttonwidth:", activityButtonWidth, motion.x, motion.y);  
-    motion.set(0.,0.); 
+    motion.set(0., 0.);
   }
   return motion;
 }
