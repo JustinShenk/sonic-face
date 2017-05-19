@@ -19,7 +19,7 @@ int activityButtonWidth;
 String[] instruments = {"Beat", "Clap", "Cello + Snare", "Mod Saw", "Vocals"};
 int[] instrumentIndex = {0, 1, 2, 3, 4};
 int instrumentIndexOffset = 0;
-// TODO: Remove `mx` and `my` variable references
+// FIXME: Remove `mx` and `my` variable references
 int mx1=0;
 int my1;
 int mx2=0;
@@ -93,7 +93,7 @@ void initializeUI() {
   activityButtonWidth = activityBarWidth / buttonsCount;
   int activityButtonHeight = 20;  
 
-  String[] buttons = {"A", "B", "C", "D"};
+  String[] buttons = {"A", "B", "C", "D"}; // Placeholders
   for (int i = 0; i < buttons.length; i++) {
     int buttonX = activityBarX0 + i * activityButtonWidth;
     Rectangle rectangle = new Rectangle(
@@ -149,7 +149,10 @@ void draw() {
   filter(GRAY);
   opencv.flip(OpenCV.HORIZONTAL);
   textFont(f, 16);  
+  //Rectangle[] facesPrev = faces;
   faces = opencv.detect();
+  Rectangle[] sortedFaces = sortFaces(faces);
+  //ensureContinuity(facesPrev, faces);
   image(opencv.getOutput(), 0, 0 );
 
   if (isOpticalFlow) {
@@ -168,7 +171,7 @@ void draw() {
   if (mx2 == 0) mx2 = 320/2;
   // Show brightest point for debugging
   drawBrightestPoint();
-  drawFaces(faces);
+  drawFaces(sortedFaces);
   drawLines();
   if (isOpticalFlow) {
   }
@@ -191,6 +194,24 @@ void updateTimers() {
   if (changeInstrumentCountdown > 0) changeInstrumentCountdown--;
 }
 
+void ensureContinuity(Rectangle[] prevFaces) {
+  /**
+   * Preserve allignment of faces/instrument.
+   * @param  prevFaces array of rectangles
+   */
+  // FIXME: Complete this.
+
+  int threshold = 5;
+  int[] indexOffsetVector = new int[faces.length];
+  for (int i = 0; i < faces.length; i++) {
+    for (int j = 0; j < prevFaces.length; j++) {      
+      int distX = faces[i].x - prevFaces[j].x;
+      if (distX < threshold) {
+        // Assume it is the same faces
+      }
+    }
+  }
+}
 void moveController(Rectangle[] faces) {
   // Move the wheel based on motion in controller
   //for (int i = 0; i < faces.length && i < 4; i++) {
@@ -208,8 +229,11 @@ void drawController(Rectangle[] faces) {
    */
   PVector[] controllerActivities = {};
   float angle = 2 * PI / divisions;
+  // Draw selector wheel with spokes
   for (int i = 0; i < faces.length && i < 4; i++) { // Limit to 4 faces for testing
     Rectangle face = faces[i];
+    stroke(0, 255, 0);
+    // Draw wheel
     ellipse(face.x + face.width/2, face.y + face.height*2, face.width, face.height);
     int radius = face.width;
     int circleCenterX = face.x + face.width/2;
@@ -221,8 +245,10 @@ void drawController(Rectangle[] faces) {
     int referenceY = circleCenterY + int(innerRadius * sin(angle * j));
     int referenceX = circleCenterX + int(innerRadius * cos(angle * j));
     int targetY = circleCenterY + int(outerRadius * sin(angle * j));
-    int targetX = circleCenterX + int(outerRadius * cos(angle * j));    
+    int targetX = circleCenterX + int(outerRadius * cos(angle * j));
+    // Draw spokes
     line(referenceX, referenceY, targetX, targetY);
+    ellipse(referenceX, referenceY, 5f, 5f);
 
     // Move the wheel using the motion on the sides of the cirle
     Rectangle clockwiseRotate = new Rectangle(circleCenterX + face.width/2, circleCenterY - face.height/2, face.width/2, face.height);    
@@ -266,7 +292,8 @@ void drawController(Rectangle[] faces) {
       strokeWeight(3);
       ellipse(circleCenterX, circleCenterY, face.width, face.width);
       changeInstrumentCountdown = 10;
-      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];      
+      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];
+      // Shift instruments to the left.
       for (int k = 1; k < faceTexts[0].length; k++) {    
         faceTexts[0][k-1] = faceTexts[0][k];
       }
@@ -282,26 +309,14 @@ void drawFaces(Rectangle[] faces) {
   for (int i = 0; i < faces.length; i++) {  
     stroke(colorList[i% colorList.length]);
 
-    if (i < 5) {
+    if (i < 5) { // Draw instrument name below first 5 faces 
       if (mode == 0) {
+        for (Rectangle face : faces) print(face.x + " " + face.y);
         text(faceTexts[mode][i], faces[i].x, faces[i].y + faces[i].height + 10);
       }
       // Update the area of faces
       faceSizes[i] = faces[i].width * faces[i].height;
-    }
-
-    if (i ==0) {      
-      //control the wheel with lateral motion
-      mx1 = faces[i].x + faces[i].width / 2;
-      my1 = faces[i].y;
-    } else if (i == 1) {
-      mx2 = faces[i].x + faces[i].width / 2;
-      my2 = faces[i].y;
-    } else if (i == 2) {
-      // Second person fills in the music
-      mx2 = faces[i].x + faces[i].width / 2;
-      my2 = faces[i].y;
-    }
+    }    
 
     if (i == faces.length -1 || i == 4) { // Last face only      
       getFaceRatios(i);
@@ -310,21 +325,12 @@ void drawFaces(Rectangle[] faces) {
     // Draw line below face
     strokeWeight(3);
     int lineLength = faces[i].width * selectorPosition[i] / divisions;
-
     line(faces[i].x, faces[i].y+faces[i].height, faces[i].x+lineLength, faces[i].y+faces[i].height);
   }
 
   if (!debugMode) {
     // Allow override
     facesCount = faces.length;
-  }
-
-  // Reset pan settings if no faces found
-  if (facesCount == 0) {
-    mx1 = -1;
-    mx2 = -1;
-  } else if (facesCount == 1) {
-    mx2 = -1;
   }
 }
 
@@ -389,6 +395,28 @@ void drawText() {
   }
 }
 
+Rectangle[] dropDistantFaces(Rectangle[] faces) {
+  /**
+   * Exclude remote faces.
+   * @param  faces array of face rectangles
+   * @return faces array of face rectanlges without remote faces
+   */
+  Rectangle[] cleanFaces = new Rectangle[0];
+  int maxWidth = 0;
+  for (Rectangle face : faces) {
+    if (face.width > maxWidth) maxWidth = face.width;
+  }
+  for (Rectangle face : faces) {
+    if (face.width < maxWidth / 2) {
+      // Skip small faces
+    } else {
+      append(cleanFaces, face);
+    }
+  }
+  return cleanFaces;
+}
+void checkContinuity() {
+}
 void readSigns(Rectangle[] faces) {
   /**
    * Read signs on users' controllers
@@ -468,7 +496,26 @@ void keyPressed() {
   }
 }
 
-
+Rectangle[] sortFaces(Rectangle[] faces) {
+  // Initialize sortedFaces array
+  if (faces.length == 0) return faces;
+  Rectangle[] sortedFaces = new Rectangle[faces.length];
+  IntList facesX = new IntList();
+  // Sort list of face x-positions 
+  for (int i = 0; i < faces.length; i++) {
+    facesX.append(faces[i].x);
+  }
+  facesX.sort();
+  // Sort faces according to facesX order
+  for (int i = 0; i < faces.length; i++) {
+    for (int j= 0; j < facesX.size(); j++) {       
+      if (faces[i].x == facesX.get(j)) {
+        sortedFaces[j] = faces[i];
+      }
+    }
+  }
+  return sortedFaces;
+}
 PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMotion) {
   /**
    * This method gets motion within a rectanlge `r`.
