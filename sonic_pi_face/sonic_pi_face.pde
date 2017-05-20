@@ -146,7 +146,7 @@ void draw() {
   noFill();
   scale(2);
   opencv.loadImage(video);
-  filter(GRAY);
+  //filter(GRAY);
   opencv.flip(OpenCV.HORIZONTAL);
   textFont(f, 16);  
   //Rectangle[] facesPrev = faces;
@@ -251,9 +251,12 @@ void drawController(Rectangle[] faces) {
     ellipse(referenceX, referenceY, 5f, 5f);
 
     // Move the wheel using the motion on the sides of the cirle
-    Rectangle clockwiseRotate = new Rectangle(circleCenterX + face.width/2, circleCenterY - face.height/2, face.width/2, face.height);    
+    PVector clockRotUL = new PVector(circleCenterX + face.width/2, circleCenterY - face.height/2);
+    Rectangle clockwiseRotate = new Rectangle(int(clockRotUL.x),int(clockRotUL.y), face.width/5, face.height);    
     PVector clockwiseActivity = getMotion(clockwiseRotate, i, false, false);
-    if (clockwiseActivity.mag() > 0.01) {
+    if (clockwiseActivity.mag() > 0.05) {
+      stroke(255,0,0);
+      //print("y : " + clockwiseActivity.y);
       selectorPosition[i]++;
       if (selectorPosition[i] > divisions - 1) {
         selectorPosition[i] = divisions - 1;
@@ -264,13 +267,19 @@ void drawController(Rectangle[] faces) {
         line(faces[i].x+lineLength, faces[i].y+faces[i].height-3, faces[i].x+lineLength, faces[i].y+faces[i].height+3);
       }
     }
+    stroke(0,0,255);
+    rect(clockwiseRotate.x,clockwiseRotate.y,clockwiseRotate.width,clockwiseRotate.height);
     append(controllerActivities, clockwiseActivity);
-    Rectangle counterClockwiseRotate = new Rectangle(circleCenterX-face.width/2, circleCenterY - face.height/2, face.width/2, face.height);
+    PVector counterClockRotUL = new PVector(circleCenterX-face.width/2 - face.width/5, circleCenterY - face.height/2);
+    Rectangle counterClockwiseRotate = new Rectangle(int(counterClockRotUL.x), int(counterClockRotUL.y), face.width/5, face.height);
     PVector counterClockwiseActivity = getMotion(counterClockwiseRotate, i, false, false);
-    if (counterClockwiseActivity.mag() > 0.01) {
+    if (counterClockwiseActivity.mag() > 0.05) {
+      stroke(255,0,0);
       selectorPosition[i]--;
-      if (selectorPosition[i] < 0) selectorPosition[i] = 0;
+      if (selectorPosition[i] < 0) selectorPosition[i] = 0;     
     }
+    stroke(0,0,255);
+    rect(counterClockwiseRotate.x,counterClockwiseRotate.y,counterClockwiseRotate.width,counterClockwiseRotate.height);
     append(controllerActivities, counterClockwiseActivity);
     int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
     if (clockwiseActivity.x > 0.01) {
@@ -286,8 +295,15 @@ void drawController(Rectangle[] faces) {
       line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
     }
     // User changes instrument if contralateral motion detected in controller
-    if (clockwiseActivity.x > 0.1 
-      && counterClockwiseActivity.x < -0.1 
+    Rectangle leftWheel = new Rectangle(circleCenterX - face.width/2, circleCenterY-face.height/3, face.width/2, face.height*2/3);
+    Rectangle rightWheel = new Rectangle(circleCenterX,circleCenterY-face.width/3,face.width/2,face.height*2/3);
+    stroke(50,50,50);
+    rect(leftWheel.x,leftWheel.y,leftWheel.width,leftWheel.height);
+    rect(rightWheel.x,rightWheel.y,rightWheel.width,rightWheel.height);
+    PVector rightWheelActivity = getMotion(rightWheel, 0, false, false);
+    PVector leftWheelActivity = getMotion(leftWheel, 0, false, false);
+    if (rightWheelActivity.x > 0.1 
+      && leftWheelActivity.x < -0.1 
       && changeInstrumentCountdown == 0) {
       strokeWeight(3);
       ellipse(circleCenterX, circleCenterY, face.width, face.width);
