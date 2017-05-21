@@ -43,14 +43,21 @@ float pan2 = 0;
 int activeColumn = 0;
 int divisions = 16;
 int changeInstrumentCountdown;
+boolean rotationFeature = true;
+boolean showGrid = false;
+float angle = 2 * PI / divisions;
+int controllerStartOffsetY = 2;
 
 Rectangle[] activityBar = new Rectangle[4];
-PVector[] activityMeasure = {new PVector(0, 0), new PVector(0, 0), new PVector(0, 0), new PVector(0, 0)}; 
+PVector[] activityMeasure = {new PVector(0, 0), new PVector(0, 0), new PVector(0, 0), new PVector(0, 0)};
 color RED = color(255, 0, 0);
 color BLUE = color(0, 0, 255);
 color GREEN = color(0, 255, 0);
 color VIOLET = color(138, 43, 226);
 color ORANGE = color(229, 166, 93);
+color GRAY = color(50, 50, 50);
+color LIGHTGRAY = color(200, 200, 200);
+color WHITE = color(255, 255, 255);
 
 color[] colorList = {RED, BLUE, GREEN, VIOLET};
 // [Modes]
@@ -61,9 +68,11 @@ boolean brightPointMode = false;
 boolean debugMode = false;
 boolean isOpticalFlow = false;
 
+float[] URQuadMotionFrames = new float[5];
 int [] faceSizes = new int[5];
 int [] faceRatios = new int[5];
 int [] players = new int[5];
+String[] activityBarText = {"", "", "", " "};
 int modes=3;
 String[][] faceTexts = {
   {"Beat", "Clap", "Cello + Snare", "Mod Saw", "Vocals"}, 
@@ -76,15 +85,19 @@ void setup() {
   f = createFont("Arial", 16, true);
   initializeCamera();
   noFill();
-  stroke(0, 255, 0);
+  stroke(GREEN);
   strokeWeight(3);
   textSize(32);
-  textAlign(LEFT, TOP);  
+  textAlign(LEFT, TOP); 
   oscP5 = new OscP5(this, 8000);
   sonicPi = new NetAddress("127.0.0.1", 4559);
   initializeUI();
 }
-void initializeUI() {    
+void initializeUI() {  
+  setupActivityBar();
+}
+
+void setupActivityBar() { 
   int activityBarX0 = screenwidth/6;
   int activityBarX1 = screenwidth * 5 / 6;
   int activityBarWidth = activityBarX1 - activityBarX0;
@@ -93,7 +106,7 @@ void initializeUI() {
   //int activityBarHeight = 40;
   int buttonsCount = 4;
   activityButtonWidth = activityBarWidth / buttonsCount;
-  int activityButtonHeight = 20;  
+  int activityButtonHeight = 20; 
 
   String[] buttons = {"A", "B", "C", "D"}; // Placeholders
   for (int i = 0; i < buttons.length; i++) {
@@ -105,15 +118,14 @@ void initializeUI() {
       activityButtonHeight);
     //rectangle.setStroke(color(255));
     //rectangle.setStrokeWeight(4);
-    activityBar[i] = rectangle;    
+    activityBar[i] = rectangle;   
     //text(buttons[i], buttonX, activityBarY0);
   }
 }
-
 void initializeCamera() {
   video = new Capture(this, screenwidth, screenheight);
   video.start();
-  opencv = new OpenCV(this, screenwidth, screenheight); 
+  opencv = new OpenCV(this, screenwidth, screenheight);
   opencv.loadCascade(OpenCV.CASCADE_FRONTALFACE);
   faces = opencv.detect();
   cvWidth = screenwidth;
@@ -150,7 +162,7 @@ void draw() {
   opencv.loadImage(video);
   //filter(GRAY);
   opencv.flip(OpenCV.HORIZONTAL);
-  textFont(f, 16);  
+  textFont(f, 16); 
   //Rectangle[] facesPrev = faces;
   faces = opencv.detect();
   Rectangle[] sortedFaces = sortFaces(faces);
@@ -158,14 +170,13 @@ void draw() {
   image(opencv.getOutput(), 0, 0 );
 
   if (isOpticalFlow) {
-    opencv.calculateOpticalFlow();   
+    opencv.calculateOpticalFlow();  
     // Reset stroke and text displlay
-    stroke(0, 255, 0);
     strokeWeight(1);
-    textSize(8);  
+    textSize(8); 
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
-    drawActivityBar();
+    drawActivityBar(); // Optional
   }
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
@@ -193,7 +204,6 @@ void draw() {
 
 void updateTimers() {
   if (changeInstrumentCountdown > 0) changeInstrumentCountdown--;
-  print("timer: " + changeInstrumentCountdown);
 }
 
 void ensureContinuity(Rectangle[] prevFaces) {
@@ -228,19 +238,28 @@ void moveController(Rectangle[] faces) {
 }
 void drawController(Rectangle[] faces) {
   /** Draw selector wheel for each player.
+   * @param  faces array of faces
    */
-  PVector[] controllerActivities = {};  
-  float angle = 2 * PI / divisions;
-  int controllerStartOffsetY = 2;
+
   // Draw selector wheel with spokes
   for (int i = 0; i < faces.length && i < 4; i++) { // Limit to 4 faces for testing
     Rectangle face = faces[i];
     int controllerStartX = face.x;
-    int controllerStartY = face.y + face.height * controllerStartOffsetY;
-    stroke(0, 255, 0);
+    int controllerStartY = face.y + controllerStartOffsetY * face.height;
+
+    // Draw volume bar below face
+    stroke(RED);
+    strokeWeight(3);
+    int lineLength = faces[i].width * selectorPosition[i] / divisions;
+    int volumeY = controllerStartY-face.height;
+    line(controllerStartX, volumeY, face.x+lineLength, volumeY);
+
+    stroke(GREEN);
+    strokeWeight(1);
     int radius = face.width;
     int circleCenterX = controllerStartX + face.width/2;
     int circleCenterY = controllerStartY + face.height/2;
+
     // Draw wheel    
     ellipse(circleCenterX, circleCenterY, face.width, face.height);
 
@@ -251,67 +270,43 @@ void drawController(Rectangle[] faces) {
     int referenceX = circleCenterX + int(innerRadius * cos(angle * j));
     int targetY = circleCenterY + int(outerRadius * sin(angle * j));
     int targetX = circleCenterX + int(outerRadius * cos(angle * j));
+
     // Draw spokes
     line(referenceX, referenceY, targetX, targetY);
+
     // Draw circle indicating position of selector
     ellipse(referenceX, referenceY, 5f, 5f);
 
-    // Move the wheel using the motion on the sides of the cirle
-    PVector clockRotUL = new PVector(circleCenterX + face.width/2, circleCenterY - face.height/2);
-    Rectangle clockwiseRotate = new Rectangle(int(clockRotUL.x), int(clockRotUL.y), face.width/5, face.height);
-    PVector clockwiseActivity = getMotion(clockwiseRotate, i, false, false);
-    if (clockwiseActivity.mag() > 0.05) {
-      //print("y : " + clockwiseActivity.y);
-      selectorPosition[i]++;
-      if (selectorPosition[i] > divisions - 1) {
-        selectorPosition[i] = divisions - 1;
-        // Draw line below face
-        stroke(255, 0, 0);
-        strokeWeight(3);
-        int lineLength = faces[i].width * selectorPosition[i] / divisions;
-        line(faces[i].x+lineLength, faces[i].y+faces[i].height*2, faces[i].x+lineLength, faces[i].y+faces[i].height*2);
-      }
-    }
-    stroke(50, 50, 50);
-    strokeWeight(1);
-    rect(clockwiseRotate.x, clockwiseRotate.y, clockwiseRotate.width, clockwiseRotate.height);
-    append(controllerActivities, clockwiseActivity);
-    PVector counterClockRotUL = new PVector(circleCenterX-face.width/2 - face.width/5, circleCenterY - face.height/2);
-    Rectangle counterClockwiseRotate = new Rectangle(int(counterClockRotUL.x), int(counterClockRotUL.y), face.width/5, face.height);
-    PVector counterClockwiseActivity = getMotion(counterClockwiseRotate, i, false, false);
-    if (counterClockwiseActivity.mag() > 0.05) {      
-      selectorPosition[i]--;
-      if (selectorPosition[i] < 0) selectorPosition[i] = 0;
-    }
-    stroke(0, 0, 255);
-    rect(counterClockwiseRotate.x, counterClockwiseRotate.y, counterClockwiseRotate.width, counterClockwiseRotate.height);
-    append(controllerActivities, counterClockwiseActivity);
+    if (rotationFeature) getRotation(circleCenterX, circleCenterY, face, i);   
 
-    // Draw orange horizontal volume bar in the circle
-    int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
-    if (clockwiseActivity.x > 0.01) {
-      lineRightEnd = circleCenterX + int(clockwiseActivity.x * 100);
-      lineRightEnd = constrain(lineRightEnd, circleCenterX, circleCenterX + face.width/2);
-      stroke(ORANGE);
-      line(circleCenterX, circleCenterY, lineRightEnd, circleCenterY);
-    }    
-    if (counterClockwiseActivity.x < -0.01) {
-      lineLeftEnd = circleCenterX + int(counterClockwiseActivity.x * 100);
-      lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
-      stroke(ORANGE);      
-      line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
-    }
+    //PVector[] columnActivity = getColumnActivity(circleCenterX, circleCenterY, face, i);
+
     // User changes instrument if contralateral motion detected in controller
     Rectangle leftWheel = new Rectangle(circleCenterX - face.width, circleCenterY-face.height/5, face.width, face.height*2/5);
     Rectangle rightWheel = new Rectangle(circleCenterX, circleCenterY-face.height/5, face.width, face.height*2/5);
-    stroke(50, 50, 50);
+
+    // Draw the receptive fields for instrument change for development
+    stroke(GRAY);
     strokeWeight(1);
     rect(leftWheel.x, leftWheel.y, leftWheel.width, leftWheel.height);
     rect(rightWheel.x, rightWheel.y, rightWheel.width, rightWheel.height);
     PVector rightWheelActivity = getMotion(rightWheel, 0, false, false);
     PVector leftWheelActivity = getMotion(leftWheel, 0, false, false);
-    print("face width: " + face.width + " left: " + leftWheelActivity.x + leftWheelActivity.y + " right: " + rightWheelActivity.x + leftWheelActivity.y);
-    //float faceDistanceOffset = face.width
+
+    // Draw orange horizontal volume bar in the circle
+    int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
+    if (rightWheelActivity.x > 0.01) {
+      lineRightEnd = circleCenterX + int(rightWheelActivity.x * 100);
+      lineRightEnd = constrain(lineRightEnd, circleCenterX, circleCenterX + face.width/2);
+      stroke(ORANGE);
+      line(circleCenterX, circleCenterY, lineRightEnd, circleCenterY);
+    }    
+    if (leftWheelActivity.x < -0.01) {
+      lineLeftEnd = circleCenterX + int(leftWheelActivity.x * 100);
+      lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
+      stroke(ORANGE);      
+      line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
+    }
     if (rightWheelActivity.x > 0.03 
       && leftWheelActivity.x < -0.03 
       && changeInstrumentCountdown == 0) {
@@ -320,7 +315,7 @@ void drawController(Rectangle[] faces) {
       ellipse(circleCenterX, circleCenterY, face.width, face.width);
       strokeWeight(1);
       changeInstrumentCountdown = 10; // reset countdown to limit to one gesture
-      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];
+      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];      
       // Shift instruments to the left.
       for (int k = 1; k < faceTexts[0].length; k++) {    
         faceTexts[0][k-1] = faceTexts[0][k];
@@ -329,13 +324,153 @@ void drawController(Rectangle[] faces) {
   }
   readSigns(faces, controllerStartOffsetY);
 }
+
+PVector[] getColumnActivity(int circleCenterX, int circleCenterY, Rectangle face, int faceIndex) {
+  /** Get activity of columns on the side of the controller.
+   * @param  circleCenterX
+   * @param  circleCenterY
+   * @param  face
+   * @param  faceIndex
+   * @return array of average motion in each columns
+   */
+  PVector[] columnActivities = new PVector[2];
+  int i = faceIndex;
+
+  // Get left column activity
+  PVector leftColumnUL = new PVector(circleCenterX-face.width/2 - face.width/5, circleCenterY - face.height/2);
+  Rectangle leftColumn = new Rectangle(int(leftColumnUL.x), int(leftColumnUL.y), face.width/5, face.height);
+  PVector leftColumnActivity = getMotion(leftColumn, i, false, false);
+
+  stroke(GRAY);
+  strokeWeight(1);
+  rect(leftColumn.x, leftColumn.y, leftColumn.width, leftColumn.height);
+  append(columnActivities, leftColumnActivity);
+  PVector rightColumnUL = new PVector(circleCenterX + face.width/2, circleCenterY - face.height/2);
+  Rectangle rightColumn = new Rectangle(int(rightColumnUL.x), int(rightColumnUL.y), face.width/5, face.height);
+  PVector rightColumnActivity = getMotion(rightColumn, i, false, false);
+
+  // Draw rotation receptive fields for debugging
+  stroke(RED);
+  strokeWeight(1);
+  rect(rightColumn.x, rightColumn.y, rightColumn.width, rightColumn.height);
+  append(columnActivities, rightColumnActivity);
+
+  boolean isCClockRot = leftColumnActivity.y - rightColumnActivity.y > 0.05;
+  boolean isClockRot = rightColumnActivity.y - leftColumnActivity.y > 0.05;
+
+  if (isCClockRot) adjustSelector(-1, face, i);
+  if (isClockRot) adjustSelector(1, face, i);
+
+  return columnActivities;
+}
+
+void adjustSelector(int direction, Rectangle face, int facesIndex) {
+  int i = facesIndex;
+  if (direction < 0) {
+    selectorPosition[i]--; // FIXME: replace with constrain function
+    if (selectorPosition[i] < 0) selectorPosition[i] = 0;
+  } else {
+    selectorPosition[i]++; // FIXME: replace with constrain function
+    if (selectorPosition[i] > divisions - 1) {
+      selectorPosition[i] = divisions - 1;
+      // Draw vertial line at right side of volume bar when maximum volume is reached
+      stroke(RED);
+      strokeWeight(3);
+      int lineLength = face.width * selectorPosition[i] / divisions;
+      int volumeY = (controllerStartOffsetY-1) * face.height + face.y;
+      line(face.x+lineLength, volumeY-3, face.x+lineLength, volumeY+3);
+    }
+  }
+}
+void getRotation(int circleCenterX, int circleCenterY, Rectangle face, int faceIndex) {
+  /** Get rotation within controller.
+   */
+  // Quadrant approach
+  // NOTE: Doesn't work as expected.
+  Rectangle URQuad = new Rectangle(circleCenterX, circleCenterY - face.height/2, face.width/2, face.height/2);
+  Rectangle BRQuad = new Rectangle(circleCenterX, circleCenterY, face.width/2, face.height/2);
+  Rectangle BLQuad = new Rectangle(face.x, circleCenterY, face.width/2, face.height/2);
+  Rectangle ULQuad = new Rectangle(circleCenterX-face.width/2, circleCenterY - face.height/2, face.width/2, face.height/2);
+  stroke(LIGHTGRAY);
+  // Draw quadrants
+  for (Rectangle quad : new Rectangle[] {URQuad, BRQuad, BLQuad, ULQuad}) {
+    rect(quad.x, quad.y, quad.width, quad.width);
+  }
+  PVector URRot = getMotion(URQuad, 0, false, false);
+  PVector BRRot = getMotion(BRQuad, 1, false, false);
+  PVector BLRot = getMotion(BLQuad, 2, false, false);
+  PVector ULRot = getMotion(ULQuad, 3, false, false);
+
+  boolean URClock = URRot.x > 0.05 && URRot.y > 0.05 && (URRot.mag() > 0.05);
+  boolean BRClock = BRRot.x < -0.05 && URRot.y > 0.05 && URRot.mag() > 0.05;
+  boolean BLClock = BLRot.x < -0.05 && BLRot.y < -0.05 && BLRot.mag() > 0.05;
+  boolean ULClock = ULRot.x > 0.05 && ULRot.y < -0.05 && ULRot.mag() > 0.05;
+
+  boolean URCClock = URRot.x < -0.05 && URRot.y < -0.05 && (URRot.mag() > 0.05);
+  boolean BRCClock = BRRot.x > 0.05 && URRot.y < -0.05 && URRot.mag() > 0.05;
+  boolean BLCClock = BLRot.x > 0.05 && BLRot.y > 0.05 && BLRot.mag() > 0.05;
+  boolean ULCClock = ULRot.x < -0.05 && ULRot.y > 0.05 && ULRot.mag() > 0.05;
+
+  // Display for debugging
+  activityBarText[0] = str(degrees(URRot.heading()));
+  activityBarText[1] = nfs(URRot.mag(), 1, 2);
+  activityBarText[2] = "clockwise: " + str(URClock);
+
+  // Minimal approach using extreme subspaces of quadrants    
+  Rectangle upperSub = new Rectangle(
+    circleCenterX-face.width/2, 
+    circleCenterY-face.height/2, 
+    face.width, face.height/4);
+  Rectangle rightSub = new Rectangle(
+    circleCenterX+face.width/4, 
+    circleCenterY - face.height/2, 
+    face.width/4, 
+    face.height);
+  Rectangle lowerSub = new Rectangle(
+    circleCenterX-face.width/2, 
+    circleCenterY+face.height/4, 
+    face.width, face.height/4);
+  Rectangle leftSub = new Rectangle(
+    circleCenterX-face.width/2, 
+    circleCenterY-face.height/2, 
+    face.width/4, 
+    face.height);
+
+  PVector[] subExtrema = new PVector[4];
+  Rectangle[] subs = {upperSub, rightSub, lowerSub, leftSub};
+  for (int i = 0; i < 4; i++) {
+    Rectangle sub = subs[i];
+    // Draw subspaces
+    stroke(LIGHTGRAY);
+    rect(sub.x, sub.y, sub.width, sub.height);
+    PVector subMotion = getMotion(sub, 0, false, false);
+    subExtrema[i] = subMotion;
+  }
+  activityBarText[3] = nfs(subExtrema[0].x, 1, 2);
+  float min = 0.015; // Threshold or minimum
+  boolean clockRot = (subExtrema[0].x > min) 
+    || (subExtrema[1].y > min) 
+    || (subExtrema[2].x < -min) 
+    || (subExtrema[3].y < -min);
+  boolean counterClockRot = (subExtrema[0].x < -min) 
+    || (subExtrema[1].y < -min) 
+    || (subExtrema[2].x > min) 
+    || (subExtrema[3].y > min);
+  if (clockRot) {   
+    adjustSelector(1, face, faceIndex);
+  }
+  if (counterClockRot) {
+    adjustSelector(-1, face, faceIndex);
+  }
+}
+
 void drawFaces(Rectangle[] faces) {
   /**
-   * Draw face line, update text and faceRectangle data.
+   * Draw volume bar under face, update text and faceRectangle data.
    * @ param  faces Array of face rectangles
    */
   for (int i = 0; i < faces.length; i++) {  
-    stroke(colorList[i% colorList.length]);
+    stroke(colorList[i % colorList.length]);
 
     if (i < 5) { // Draw instrument name below first 5 faces 
       if (mode == 0) { 
@@ -348,11 +483,6 @@ void drawFaces(Rectangle[] faces) {
     if (i == faces.length -1 || i == 4) { // Last face only      
       getFaceRatios(i);
     }
-
-    // Draw line below face
-    strokeWeight(3);
-    int lineLength = faces[i].width * selectorPosition[i] / divisions;
-    line(faces[i].x, faces[i].y+faces[i].height, faces[i].x+lineLength, faces[i].y+faces[i].height);
   }
 
   if (!debugMode) {
@@ -368,7 +498,7 @@ void drawBrightestPoint() {
   // Get brightest point
   loc = opencv.max();
   activeColumn = int((loc.x / screenwidth) * columns); // zero-indexing
-  stroke(255, 0, 0);
+  stroke(RED);
   strokeWeight(4);
   noFill();
   // Draw brightest point with ellipse
@@ -378,7 +508,7 @@ void drawBrightestPoint() {
 }
 
 void resetStroke() {
-  stroke(255, 0, 0);
+  stroke(RED);
   strokeWeight(1);
   noFill();
 }
@@ -400,7 +530,7 @@ void drawLines() {
   for (Rectangle button : activityBar) 
     rect(float(button.x), float(button.y), float(button.width), float(button.height));
   // Reset stroke
-  stroke(255, 0, 0);
+  stroke(RED);
   strokeWeight(1);
   noFill();
 }
@@ -417,7 +547,7 @@ void drawColumns() {
 }
 void drawText() {
   if (debugMode) {
-    fill(255, 255, 255);  
+    fill(WHITE);  
     text("Debug Mode: " + str(facesCount) + " faces present", 10, 10);
   }
 }
@@ -443,18 +573,19 @@ Rectangle[] dropDistantFaces(Rectangle[] faces) {
   return cleanFaces;
 }
 void checkContinuity() {
+  // TODO Complete this
 }
 void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
   /**
    * Read signs on users' controllers
    * @param  faces array of player face rectangles used for position
    */
-  // Draw writing grid
+  // Draw `rows` x `columns` air-writing grid
   int rows = 8;
   int columns = 8;
   float activationThreshold = 0.015;
   PVector[] gridMotion = new PVector[rows*columns];
-  stroke(200, 200, 200);
+  stroke(GRAY);
   strokeWeight(0.3);
   for (int i = 0; i < faces.length; i++) {
     // Draw grid
@@ -462,22 +593,16 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
     int gridY0 = faces[i].y + int(faces[i].height * (controllerStartOffsetY));  
 
     // Show the grid
-    for (int j = 0; j <= rows; j++) {
+    for (int j = 1; j <= rows; j++) {
       if (debugMode) line(gridX0, gridY0 + (j * faces[i].height) / rows, gridX0 + faces[i].width, gridY0 + (j * faces[i].height) / rows);
       for (int k = 0; k < columns; k++) {
         int boxWidth = faces[i].width / columns;
         int boxHeight = faces[i].height / rows;
         int boxULX = gridX0 + k * faces[i].width/ columns;
         int boxULY = gridY0 + (j-1) * faces[i].height/ rows;
-        int boxURX = boxULX + boxWidth;
-        int boxURY = boxULY;
-        int boxBLX = boxULX;
-        int boxBLY = boxULY + boxHeight;
-        int boxBRX = boxBLX + boxWidth;
-        int boxBRY = boxBLY;
         Rectangle box = new Rectangle(boxULX, boxULY, boxWidth, boxHeight);
         PVector boxMotion = getMotion(box, j+ k * j, false, false); // FIXME: indexing
-        if (boxMotion.mag() > activationThreshold) {          
+        if (boxMotion.mag() > activationThreshold && showGrid) {          
           fill(204, 102, 0);            
           rect(box.x, box.y, box.width, box.height);
           noFill();
@@ -603,13 +728,20 @@ void drawActivityBar() {
    * Used for displaying arbitrary information. Currently disploys motion within buttons, visible 
    * by pressing `b`.
    */
-  textFont(f, 10);  
+  textFont(f, 10);
+
   for (int button = 0; button < activityBar.length; button++) {
-    PVector motion = getMotion(activityBar[button], button, true, false);
-    float combinedVector = motion.mag();    
-    text(nfs(combinedVector*10, 1, 2), activityBar[button].x + (activityButtonWidth / 4), activityBar[button].y + 5);
+    String buttonText = "";
+    if (activityBarText[button] != "") { // If set somewhere else (for dev only)
+      buttonText = activityBarText[button];
+    } else {
+      PVector motion = getMotion(activityBar[button], button, true, false);
+      float combinedVector = motion.mag();  
+      buttonText = nfs(combinedVector*10, 1, 2);
+    }
+    text(buttonText, activityBar[button].x + (activityButtonWidth / 4), activityBar[button].y + 5);
   }
-  textFont(f, 16);
+  textFont(f, 16); // Reset font size
 }
 void captureEvent(Capture c) {
   c.read();
