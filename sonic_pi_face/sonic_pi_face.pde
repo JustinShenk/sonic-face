@@ -10,7 +10,7 @@ NetAddress sonicPi;
 
 Capture video;
 OpenCV opencv;
-PFont f;   
+PFont f;
 
 int screenheight = 240;
 int screenwidth = 320;
@@ -30,9 +30,9 @@ int facesCount = 0;
 PVector loc;
 int tempo;
 float amp;
-int cvWidth; 
+int cvWidth;
 int cvHeight;
-int cvDivider = 2; 
+int cvDivider = 2;
 Rectangle[] faces;
 float easing = 1; //change to 1 to get immediate following
 int inner = 0;
@@ -88,7 +88,7 @@ void setup() {
   stroke(GREEN);
   strokeWeight(3);
   textSize(32);
-  textAlign(LEFT, TOP); 
+  textAlign(LEFT, TOP);
   oscP5 = new OscP5(this, 8000);
   sonicPi = new NetAddress("127.0.0.1", 4559);
   initializeUI();
@@ -106,7 +106,7 @@ void setupActivityBar() {
   //int activityBarHeight = 40;
   int buttonsCount = 4;
   activityButtonWidth = activityBarWidth / buttonsCount;
-  int activityButtonHeight = 20; 
+  int activityButtonHeight = 20;
 
   String[] buttons = {"A", "B", "C", "D"}; // Placeholders
   for (int i = 0; i < buttons.length; i++) {
@@ -118,7 +118,7 @@ void setupActivityBar() {
       activityButtonHeight);
     //rectangle.setStroke(color(255));
     //rectangle.setStrokeWeight(4);
-    activityBar[i] = rectangle;   
+    activityBar[i] = rectangle; 
     //text(buttons[i], buttonX, activityBarY0);
   }
 }
@@ -162,7 +162,7 @@ void draw() {
   opencv.loadImage(video);
   //filter(GRAY);
   opencv.flip(OpenCV.HORIZONTAL);
-  textFont(f, 16); 
+  textFont(f, 16);
   //Rectangle[] facesPrev = faces;
   faces = opencv.detect();
   Rectangle[] sortedFaces = sortFaces(faces);
@@ -170,10 +170,10 @@ void draw() {
   image(opencv.getOutput(), 0, 0 );
 
   if (isOpticalFlow) {
-    opencv.calculateOpticalFlow();  
+    opencv.calculateOpticalFlow();
     // Reset stroke and text displlay
     strokeWeight(1);
-    textSize(8); 
+    textSize(8);
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
     drawActivityBar(); // Optional
@@ -277,7 +277,7 @@ void drawController(Rectangle[] faces) {
     // Draw circle indicating position of selector
     ellipse(referenceX, referenceY, 5f, 5f);
 
-    if (rotationFeature) getRotation(circleCenterX, circleCenterY, face, i);   
+    if (rotationFeature) getRotation(circleCenterX, circleCenterY, face, i);
 
     //PVector[] columnActivity = getColumnActivity(circleCenterX, circleCenterY, face, i);
 
@@ -304,7 +304,7 @@ void drawController(Rectangle[] faces) {
     if (leftWheelActivity.x < -0.01) {
       lineLeftEnd = circleCenterX + int(leftWheelActivity.x * 100);
       lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
-      stroke(ORANGE);      
+      stroke(ORANGE);
       line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
     }
     if (rightWheelActivity.x > 0.03 
@@ -315,7 +315,7 @@ void drawController(Rectangle[] faces) {
       ellipse(circleCenterX, circleCenterY, face.width, face.width);
       strokeWeight(1);
       changeInstrumentCountdown = 10; // reset countdown to limit to one gesture
-      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];      
+      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];
       // Shift instruments to the left.
       for (int k = 1; k < faceTexts[0].length; k++) {    
         faceTexts[0][k-1] = faceTexts[0][k];
@@ -547,7 +547,7 @@ void drawColumns() {
 }
 void drawText() {
   if (debugMode) {
-    fill(WHITE);  
+    fill(WHITE);
     text("Debug Mode: " + str(facesCount) + " faces present", 10, 10);
   }
 }
@@ -590,7 +590,7 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
   for (int i = 0; i < faces.length; i++) {
     // Draw grid
     int gridX0 = faces[i].x;
-    int gridY0 = faces[i].y + int(faces[i].height * (controllerStartOffsetY));  
+    int gridY0 = faces[i].y + int(faces[i].height * (controllerStartOffsetY));
 
     // Show the grid
     for (int j = 1; j <= rows; j++) {
@@ -603,7 +603,7 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
         Rectangle box = new Rectangle(boxULX, boxULY, boxWidth, boxHeight);
         PVector boxMotion = getMotion(box, j+ k * j, false, false); // FIXME: indexing
         if (boxMotion.mag() > activationThreshold && showGrid) {          
-          fill(204, 102, 0);            
+          fill(204, 102, 0);
           rect(box.x, box.y, box.width, box.height);
           noFill();
         }
@@ -684,7 +684,7 @@ PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMoti
   }
   try {
     if (totalMotion)
-      motion = opencv.getTotalFlowInRegion(r.x, r.y, r.width, r.height);    
+      motion = opencv.getTotalFlowInRegion(r.x, r.y, r.width, r.height);
     else
       motion = opencv.getAverageFlowInRegion(r.x, r.y, r.width, r.height);
   }
@@ -692,7 +692,7 @@ PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMoti
     print("`getMotion()` error");
   }
   // Update global motion
-  if (activityBar) activityMeasure[index] = motion; 
+  if (activityBar) activityMeasure[index] = motion;
   if (Float.isNaN(motion.x) || Float.isNaN(motion.y)) {
     //print("motion set to zero", "R:", r.x, r.y, r.width, r.height, "buttonwidth:", activityButtonWidth, motion.x, motion.y);  
     motion.set(0., 0.);
@@ -709,7 +709,7 @@ void getFaceRatios(int i) {
   for (int nonplayer = i + 1; nonplayer < 5; nonplayer++) {
     faceSizes[nonplayer] = 0;
   }
-  int areaSum = 0;      
+  int areaSum = 0;
   for (int playerRectangle = 0; playerRectangle < 5; playerRectangle++) {
     areaSum += faceSizes[playerRectangle];
   }
@@ -736,7 +736,7 @@ void drawActivityBar() {
       buttonText = activityBarText[button];
     } else {
       PVector motion = getMotion(activityBar[button], button, true, false);
-      float combinedVector = motion.mag();  
+      float combinedVector = motion.mag();
       buttonText = nfs(combinedVector*10, 1, 2);
     }
     text(buttonText, activityBar[button].x + (activityButtonWidth / 4), activityBar[button].y + 5);
