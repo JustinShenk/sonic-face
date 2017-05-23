@@ -4,6 +4,8 @@ import gab.opencv.*;
 import processing.video.*;
 import java.awt.*;
 import java.awt.Rectangle;
+import java.util.Collections;
+import java.util.List;
 
 OscP5 oscP5;
 NetAddress sonicPi;
@@ -44,10 +46,10 @@ int activeColumn = 0;
 int divisions = 16;
 int changeInstrumentCountdown;
 boolean rotationFeature = true;
-boolean showGrid = false;
 float angle = 2 * PI / divisions;
 int controllerStartOffsetY = 2;
-
+int handRectWidth = 40;
+int handRectHeight = 40;
 Rectangle[] activityBar = new Rectangle[4];
 PVector[] activityMeasure = {new PVector(0, 0), new PVector(0, 0), new PVector(0, 0), new PVector(0, 0)};
 color RED = color(255, 0, 0);
@@ -67,6 +69,9 @@ int mode = 0; // First player controls which instruments (FIXME)
 boolean brightPointMode = false;
 boolean debugMode = false;
 boolean isOpticalFlow = false;
+boolean isRecording = false;
+int framesPerGesture = 10;
+PVector[][] motionData = new PVector[framesPerGesture][handRectWidth*handRectHeight];
 
 float[] URQuadMotionFrames = new float[5];
 int [] faceSizes = new int[5];
@@ -79,6 +84,8 @@ String[][] faceTexts = {
   {"", "", "", "", ""}, 
   {"", "", "", "", ""}
 };
+PrintWriter output;
+int currRecordFrame = 0;
 
 void setup() {
   size(640, 480);
@@ -92,7 +99,15 @@ void setup() {
   oscP5 = new OscP5(this, 8000);
   sonicPi = new NetAddress("127.0.0.1", 4559);
   initializeUI();
+  int m = minute();
+  int h = hour();
+  int d = day();
+  int month = month();
+  int y = year();
+  String filename = "data-" + h + "-" + m + "-" + d + "-" + month + "-" + y + ".txt";
+  output = createWriter(filename);
 }
+
 void initializeUI() {  
   setupActivityBar();
 }
@@ -171,13 +186,14 @@ void draw() {
 
   if (isOpticalFlow) {
     opencv.calculateOpticalFlow();
+    if (debugMode) opencv.drawOpticalFlow();
     // Reset stroke and text displlay
     strokeWeight(1);
     textSize(8);
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
     drawActivityBar(); // Optional
-  }
+  } 
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
   if (mx2 == 0) mx2 = 320/2;
@@ -617,7 +633,7 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
         int boxULY = gridY0 + (j-1) * faces[i].height/ rows;
         Rectangle box = new Rectangle(boxULX, boxULY, boxWidth, boxHeight);
         PVector boxMotion = getMotion(box, j+ k * j, false, false); // FIXME: indexing
-        if (boxMotion.mag() > activationThreshold && showGrid) {          
+        if (boxMotion.mag() > activationThreshold && debugMode) {          
           fill(204, 102, 0);
           rect(box.x, box.y, box.width, box.height);
           noFill();
@@ -629,8 +645,47 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
       if (debugMode) line(gridX0 + (j * faces[i].width) / columns, gridY0, gridX0 + j * faces[i].width / columns, gridY0 + faces[i].height);
     }
     resetStroke();
+    // Draw hand gesture rectangle
+    Rectangle handRect = new Rectangle(faces[i].x + faces[i].width, faces[i].y + faces[i].height, handRectWidth, handRectHeight);
+    rect(handRect.x, handRect.y, handRect.width, handRect.height);
+    if (isRecording) recordData(handRect);
   }
 }
+
+void recordData(Rectangle handRect) {  
+  PVector[] handFrameFlow = new PVector[handRect.width * handRect.height];
+  // Collate flow within frame into `handRect.width * handRect.height` x 1 vector
+  PVector flowAtPoint;            
+  for (int handRows = 0; handRows < handRect.height; handRows++) {
+    for (int handCols = 0; handCols < handRect.width; handCols++) {
+      flowAtPoint = opencv.getFlowAt(handRect.x + handCols, handRect.y + handRows);
+      handFrameFlow[handRows * 40 + handCols] = flowAtPoint;
+    }
+  }
+  textFont(f, 32);
+  text(currRecordFrame, 10,60);
+  motionData[currRecordFrame] = handFrameFlow;  
+  currRecordFrame++;
+  if (currRecordFrame == framesPerGesture) {
+    isRecording = false;
+    currRecordFrame = 0;
+    saveData();
+  }
+}
+
+void saveData() {
+  for (int i= 0; i < framesPerGesture; i++) {
+    PVector[] frameFlow = motionData[i];    
+    for (int j = 0; j < handRectWidth*handRectHeight; j++) {
+      PVector pixel = frameFlow[j];
+      output.print(nfs(pixel.x,3,4) + "t" + nfs(pixel.y,3,4) + ",");
+    }
+    output.println();
+  }
+  output.flush();
+  output.close();
+}
+
 void keyPressed() {
   if (keyCode == UP) {
     incrementMode(1);
@@ -655,6 +710,9 @@ void keyPressed() {
     facesCount = 5;
   } else if (key == 'o') {
     isOpticalFlow = !isOpticalFlow;
+  } else if (key == 'r') {
+    if (isRecording) saveData();
+    isRecording = !isRecording;
   }
   if (value == 0) {
     value = 255;
