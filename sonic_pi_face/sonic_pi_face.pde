@@ -236,6 +236,7 @@ void moveController(Rectangle[] faces) {
   //  // TODO link motion with selector position
   //}
 }
+
 void drawController(Rectangle[] faces) {
   /** Draw selector wheel for each player.
    * @param  faces array of faces
@@ -279,17 +280,22 @@ void drawController(Rectangle[] faces) {
 
     if (rotationFeature) getRotation(circleCenterX, circleCenterY, face, i);
 
-    //PVector[] columnActivity = getColumnActivity(circleCenterX, circleCenterY, face, i);
+    if (debugMode) { // Draw columns and get activity
+      PVector[] columnActivity = getColumnActivity(circleCenterX, circleCenterY, face, i);
+    }
 
     // User changes instrument if contralateral motion detected in controller
     Rectangle leftWheel = new Rectangle(circleCenterX - face.width, circleCenterY-face.height/5, face.width, face.height*2/5);
     Rectangle rightWheel = new Rectangle(circleCenterX, circleCenterY-face.height/5, face.width, face.height*2/5);
 
     // Draw the receptive fields for instrument change for development
-    stroke(GRAY);
-    strokeWeight(1);
-    rect(leftWheel.x, leftWheel.y, leftWheel.width, leftWheel.height);
-    rect(rightWheel.x, rightWheel.y, rightWheel.width, rightWheel.height);
+    if (debugMode) {
+      // Draw receptor fields for instrument change
+      stroke(GRAY);
+      strokeWeight(1);
+      rect(leftWheel.x, leftWheel.y, leftWheel.width, leftWheel.height);
+      rect(rightWheel.x, rightWheel.y, rightWheel.width, rightWheel.height);
+    }
     PVector rightWheelActivity = getMotion(rightWheel, 0, false, false);
     PVector leftWheelActivity = getMotion(leftWheel, 0, false, false);
 
@@ -357,9 +363,10 @@ PVector[] getColumnActivity(int circleCenterX, int circleCenterY, Rectangle face
 
   boolean isCClockRot = leftColumnActivity.y - rightColumnActivity.y > 0.05;
   boolean isClockRot = rightColumnActivity.y - leftColumnActivity.y > 0.05;
-
-  if (isCClockRot) adjustSelector(-1, face, i);
-  if (isClockRot) adjustSelector(1, face, i);
+  if (isCClockRot ^ isClockRot) { // Only adjust if one but not both active 
+    if (isCClockRot) adjustSelector(-1, face, i);
+    if (isClockRot) adjustSelector(1, face, i);
+  }
 
   return columnActivities;
 }
@@ -385,36 +392,9 @@ void adjustSelector(int direction, Rectangle face, int facesIndex) {
 void getRotation(int circleCenterX, int circleCenterY, Rectangle face, int faceIndex) {
   /** Get rotation within controller.
    */
-  // Quadrant approach
-  // NOTE: Doesn't work as expected.
-  Rectangle URQuad = new Rectangle(circleCenterX, circleCenterY - face.height/2, face.width/2, face.height/2);
-  Rectangle BRQuad = new Rectangle(circleCenterX, circleCenterY, face.width/2, face.height/2);
-  Rectangle BLQuad = new Rectangle(face.x, circleCenterY, face.width/2, face.height/2);
-  Rectangle ULQuad = new Rectangle(circleCenterX-face.width/2, circleCenterY - face.height/2, face.width/2, face.height/2);
-  stroke(LIGHTGRAY);
-  // Draw quadrants
-  for (Rectangle quad : new Rectangle[] {URQuad, BRQuad, BLQuad, ULQuad}) {
-    rect(quad.x, quad.y, quad.width, quad.width);
-  }
-  PVector URRot = getMotion(URQuad, 0, false, false);
-  PVector BRRot = getMotion(BRQuad, 1, false, false);
-  PVector BLRot = getMotion(BLQuad, 2, false, false);
-  PVector ULRot = getMotion(ULQuad, 3, false, false);
 
-  boolean URClock = URRot.x > 0.05 && URRot.y > 0.05 && (URRot.mag() > 0.05);
-  boolean BRClock = BRRot.x < -0.05 && URRot.y > 0.05 && URRot.mag() > 0.05;
-  boolean BLClock = BLRot.x < -0.05 && BLRot.y < -0.05 && BLRot.mag() > 0.05;
-  boolean ULClock = ULRot.x > 0.05 && ULRot.y < -0.05 && ULRot.mag() > 0.05;
-
-  boolean URCClock = URRot.x < -0.05 && URRot.y < -0.05 && (URRot.mag() > 0.05);
-  boolean BRCClock = BRRot.x > 0.05 && URRot.y < -0.05 && URRot.mag() > 0.05;
-  boolean BLCClock = BLRot.x > 0.05 && BLRot.y > 0.05 && BLRot.mag() > 0.05;
-  boolean ULCClock = ULRot.x < -0.05 && ULRot.y > 0.05 && ULRot.mag() > 0.05;
-
-  // Display for debugging
-  activityBarText[0] = str(degrees(URRot.heading()));
-  activityBarText[1] = nfs(URRot.mag(), 1, 2);
-  activityBarText[2] = "clockwise: " + str(URClock);
+  // TODO: Made abstract function for getting activity and replace the following
+  if (debugMode) getQuadrantActivity(circleCenterX, circleCenterY, face);
 
   // Minimal approach using extreme subspaces of quadrants    
   Rectangle upperSub = new Rectangle(
@@ -442,7 +422,7 @@ void getRotation(int circleCenterX, int circleCenterY, Rectangle face, int faceI
     Rectangle sub = subs[i];
     // Draw subspaces
     stroke(LIGHTGRAY);
-    rect(sub.x, sub.y, sub.width, sub.height);
+    if (debugMode) rect(sub.x, sub.y, sub.width, sub.height);
     PVector subMotion = getMotion(sub, 0, false, false);
     subExtrema[i] = subMotion;
   }
@@ -491,6 +471,41 @@ void drawFaces(Rectangle[] faces) {
   }
 }
 
+void getQuadrantActivity(int circleCenterX, int circleCenterY, Rectangle face) {
+  // Quadrant approach for rotation detection
+  // NOTE: Doesn't work as expected.
+  Rectangle URQuad = new Rectangle(circleCenterX, circleCenterY - face.height/2, face.width/2, face.height/2);
+  Rectangle BRQuad = new Rectangle(circleCenterX, circleCenterY, face.width/2, face.height/2);
+  Rectangle BLQuad = new Rectangle(face.x, circleCenterY, face.width/2, face.height/2);
+  Rectangle ULQuad = new Rectangle(circleCenterX-face.width/2, circleCenterY - face.height/2, face.width/2, face.height/2);
+  stroke(LIGHTGRAY);
+
+  if (debugMode) {
+    // Draw quadrants
+    for (Rectangle quad : new Rectangle[] {URQuad, BRQuad, BLQuad, ULQuad}) {
+      rect(quad.x, quad.y, quad.width, quad.width);
+    }
+  }
+  PVector URRot = getMotion(URQuad, 0, false, false);
+  PVector BRRot = getMotion(BRQuad, 1, false, false);
+  PVector BLRot = getMotion(BLQuad, 2, false, false);
+  PVector ULRot = getMotion(ULQuad, 3, false, false);
+
+  boolean URClock = URRot.x > 0.05 && URRot.y > 0.05 && (URRot.mag() > 0.05);
+  boolean BRClock = BRRot.x < -0.05 && URRot.y > 0.05 && URRot.mag() > 0.05;
+  boolean BLClock = BLRot.x < -0.05 && BLRot.y < -0.05 && BLRot.mag() > 0.05;
+  boolean ULClock = ULRot.x > 0.05 && ULRot.y < -0.05 && ULRot.mag() > 0.05;
+
+  boolean URCClock = URRot.x < -0.05 && URRot.y < -0.05 && (URRot.mag() > 0.05);
+  boolean BRCClock = BRRot.x > 0.05 && URRot.y < -0.05 && URRot.mag() > 0.05;
+  boolean BLCClock = BLRot.x > 0.05 && BLRot.y > 0.05 && BLRot.mag() > 0.05;
+  boolean ULCClock = ULRot.x < -0.05 && ULRot.y > 0.05 && ULRot.mag() > 0.05;
+
+  // Display for debugging
+  activityBarText[0] = str(degrees(URRot.heading()));
+  activityBarText[1] = nfs(URRot.mag(), 1, 2);
+  activityBarText[2] = "clockwise: " + str(URClock);
+}
 void drawBrightestPoint() {
   /* Draws the brights point on the screen.
    */
