@@ -79,11 +79,13 @@ int [] faceRatios = new int[5];
 int [] players = new int[5];
 String[] activityBarText = {"", "", "", " "};
 int modes=3;
+float[] instrumentAmps = {1., 1., 1., 1., 1.};
 String[][] faceTexts = {
   {"Beat", "Clap", "Cello + Snare", "Mod Saw", "Vocals"}, 
   {"", "", "", "", ""}, 
   {"", "", "", "", ""}
 };
+
 PrintWriter output;
 int currRecordFrame = 0;
 
@@ -162,8 +164,13 @@ void sendOscNote(int facesCount, int mode, int mx1, int mx2, int activeColumn) {
   toSend.add(facesCount);
   toSend.add(mode);
   toSend.add(pan1);
-  toSend.add(pan2);
+  toSend.add(pan2);  
   toSend.add(activeColumn);
+  toSend.add(instrumentAmps[0]); // beat
+  toSend.add(instrumentAmps[1]); // clap
+  toSend.add(instrumentAmps[2]); // cello
+  toSend.add(instrumentAmps[3]); // mod saw
+  toSend.add(instrumentAmps[4]); // voices
   oscP5.send(toSend, sonicPi);
 }
 
@@ -180,6 +187,7 @@ void draw() {
   textFont(f, 16);
   //Rectangle[] facesPrev = faces;
   faces = opencv.detect();
+  faces = dropDistantFaces(faces);
   Rectangle[] sortedFaces = sortFaces(faces);
   //ensureContinuity(facesPrev, faces);
   image(opencv.getOutput(), 0, 0 );
@@ -192,7 +200,7 @@ void draw() {
     textSize(8);
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
-    drawActivityBar(); // Optional
+    if (debugMode) drawActivityBar(); // Optional
   } 
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
@@ -201,6 +209,8 @@ void draw() {
   drawBrightestPoint();
   drawFaces(sortedFaces);
   drawLines();
+  drawPartyText();
+
   if (isOpticalFlow) {
   }
   // Write debug, etc., on screen
@@ -222,6 +232,14 @@ void updateTimers() {
   if (changeInstrumentCountdown > 0) changeInstrumentCountdown--;
 }
 
+void drawPartyText() {
+  textFont(f, 20);
+  text("Raise the ", 10, 30);
+  fill(GREEN);
+  text("volume", 96, 30);
+
+  fill(WHITE);
+}
 void ensureContinuity(Rectangle[] prevFaces) {
   /**
    * Preserve allignment of faces/instrument.
@@ -259,7 +277,7 @@ void drawController(Rectangle[] faces) {
    */
 
   // Draw selector wheel with spokes
-  for (int i = 0; i < faces.length && i < 4; i++) { // Limit to 4 faces for testing
+  for (int i = 0; i < faces.length && i < 5; i++) { // Limit to 5 faces for testing
     Rectangle face = faces[i];
     int controllerStartX = face.x;
     int controllerStartY = face.y + controllerStartOffsetY * face.height;
@@ -294,59 +312,69 @@ void drawController(Rectangle[] faces) {
     // Draw circle indicating position of selector
     ellipse(referenceX, referenceY, 5f, 5f);
 
+    // Get rotation around wheel (volume change)
     if (rotationFeature) getRotation(circleCenterX, circleCenterY, face, i);
 
-    if (debugMode) { // Draw columns and get activity
-      PVector[] columnActivity = getColumnActivity(circleCenterX, circleCenterY, face, i);
-    }
-
-    // User changes instrument if contralateral motion detected in controller
-    Rectangle leftWheel = new Rectangle(circleCenterX - face.width, circleCenterY-face.height/5, face.width, face.height*2/5);
-    Rectangle rightWheel = new Rectangle(circleCenterX, circleCenterY-face.height/5, face.width, face.height*2/5);
-
-    // Draw the receptive fields for instrument change for development
-    if (debugMode) {
-      // Draw receptor fields for instrument change
-      stroke(GRAY);
-      strokeWeight(1);
-      rect(leftWheel.x, leftWheel.y, leftWheel.width, leftWheel.height);
-      rect(rightWheel.x, rightWheel.y, rightWheel.width, rightWheel.height);
-    }
-    PVector rightWheelActivity = getMotion(rightWheel, 0, false, false);
-    PVector leftWheelActivity = getMotion(leftWheel, 0, false, false);
-
-    // Draw orange horizontal volume bar in the circle
-    int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
-    if (rightWheelActivity.x > 0.01) {
-      lineRightEnd = circleCenterX + int(rightWheelActivity.x * 100);
-      lineRightEnd = constrain(lineRightEnd, circleCenterX, circleCenterX + face.width/2);
-      stroke(ORANGE);
-      line(circleCenterX, circleCenterY, lineRightEnd, circleCenterY);
-    }    
-    if (leftWheelActivity.x < -0.01) {
-      lineLeftEnd = circleCenterX + int(leftWheelActivity.x * 100);
-      lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
-      stroke(ORANGE);
-      line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
-    }
-    if (rightWheelActivity.x > 0.03 
-      && leftWheelActivity.x < -0.03 
-      && changeInstrumentCountdown == 0) {
-      print("Instrument changed");
-      strokeWeight(3);
-      ellipse(circleCenterX, circleCenterY, face.width, face.width);
-      strokeWeight(1);
-      changeInstrumentCountdown = 10; // reset countdown to limit to one gesture
-      faceTexts[0][faceTexts[0].length-1] = faceTexts[0][0];
-      // Shift instruments to the left.
-      for (int k = 1; k < faceTexts[0].length; k++) {    
-        faceTexts[0][k-1] = faceTexts[0][k];
-      }
-    }
+    //    if (debugMode) { // Draw columns and get activity
+    //      PVector[] columnActivity = getColumnActivity(circleCenterX, circleCenterY, face, i);
+    //    }
+    if (debugMode) detectInstrumentChange(circleCenterX, circleCenterY, face);
   }
+  updateCurrInstruments(faces.length);
   readSigns(faces, controllerStartOffsetY);
 }
+void updateCurrInstruments(int facesPresent) {
+  for (int i =0; i < facesPresent; i++) {
+  }
+}
+void detectInstrumentChange(int circleCenterX, int circleCenterY, Rectangle face) {
+  // User changes instrument if contralateral motion detected in controller
+  Rectangle leftWheel = new Rectangle(circleCenterX - face.width, circleCenterY-face.height/5, face.width, face.height*2/5);
+  Rectangle rightWheel = new Rectangle(circleCenterX, circleCenterY-face.height/5, face.width, face.height*2/5);
 
+  // Draw the receptive fields for instrument change for development
+  if (debugMode) {
+    // Draw receptor fields for instrument change
+    stroke(GRAY);
+    strokeWeight(1);
+    rect(leftWheel.x, leftWheel.y, leftWheel.width, leftWheel.height);
+    rect(rightWheel.x, rightWheel.y, rightWheel.width, rightWheel.height);
+  }
+  PVector rightWheelActivity = getMotion(rightWheel, 0, false, false);
+  PVector leftWheelActivity = getMotion(leftWheel, 0, false, false);
+
+  // Draw orange horizontal volume bar in the circle
+  int lineRightEnd = circleCenterX, lineLeftEnd = circleCenterX;
+  if (rightWheelActivity.x > 0.01) {
+    lineRightEnd = circleCenterX + int(rightWheelActivity.x * 100);
+    lineRightEnd = constrain(lineRightEnd, circleCenterX, circleCenterX + face.width/2);
+    stroke(ORANGE);
+    line(circleCenterX, circleCenterY, lineRightEnd, circleCenterY);
+  }    
+  if (leftWheelActivity.x < -0.01) {
+    lineLeftEnd = circleCenterX + int(leftWheelActivity.x * 100);
+    lineLeftEnd = constrain(lineLeftEnd, circleCenterX-face.width/2, circleCenterX);
+    stroke(ORANGE);
+    line(circleCenterX, circleCenterY, lineLeftEnd, circleCenterY);
+  }
+
+  // Change instrument
+  if (rightWheelActivity.x > 0.03 
+    && leftWheelActivity.x < -0.03 
+    && changeInstrumentCountdown == 0) {
+    print("Instrument changed");
+    strokeWeight(3);
+    ellipse(circleCenterX, circleCenterY, face.width, face.width);
+    strokeWeight(1);
+    changeInstrumentCountdown = 10; // reset countdown to limit to one gesture
+    String temp = faceTexts[0][0];
+    // Shift instruments to the left.
+    for (int k = 1; k < faceTexts[0].length; k++) {    
+      faceTexts[0][k-1] = faceTexts[0][k];
+    }
+    faceTexts[0][4] = temp;
+  }
+}
 PVector[] getColumnActivity(int circleCenterX, int circleCenterY, Rectangle face, int faceIndex) {
   /** Get activity of columns on the side of the controller.
    * @param  circleCenterX
@@ -393,9 +421,9 @@ void adjustSelector(int direction, Rectangle face, int facesIndex) {
     selectorPosition[i]--; // FIXME: replace with constrain function
     if (selectorPosition[i] < 0) selectorPosition[i] = 0;
   } else {
-    selectorPosition[i]++; // FIXME: replace with constrain function
-    if (selectorPosition[i] > divisions - 1) {
-      selectorPosition[i] = divisions - 1;
+    selectorPosition[i]++; // FIXME: replace with constrain function    
+    if (selectorPosition[i] > divisions) {
+      selectorPosition[i] = divisions;
       // Draw vertial line at right side of volume bar when maximum volume is reached
       stroke(RED);
       strokeWeight(3);
@@ -404,6 +432,8 @@ void adjustSelector(int direction, Rectangle face, int facesIndex) {
       line(face.x+lineLength, volumeY-3, face.x+lineLength, volumeY+3);
     }
   }
+  // Update Sonic Pi amplitude
+  instrumentAmps[i] = float(selectorPosition[i])/float(divisions);
 }
 void getRotation(int circleCenterX, int circleCenterY, Rectangle face, int faceIndex) {
   /** Get rotation within controller.
@@ -585,26 +615,36 @@ void drawText() {
 
 Rectangle[] dropDistantFaces(Rectangle[] faces) {
   /**
-   * Exclude remote faces.
+   * Exclude remote or artifact faces.
    * @param  faces array of face rectangles
    * @return faces array of face rectanlges without remote faces
    */
-  Rectangle[] cleanFaces = new Rectangle[0];
+  Rectangle[] cleanFaces = {};
   int maxWidth = 0;
+  // Get largest (nearest) face for comparison
   for (Rectangle face : faces) {
     if (face.width > maxWidth) maxWidth = face.width;
   }
-  for (Rectangle face : faces) {
-    if (face.width < maxWidth / 2) {
+
+  for (int i = 0; i < faces.length; i++) {
+    if (faces[i].width < 40) {
       // Skip small faces
+      removeRect(faces, i);
     } else {
-      append(cleanFaces, face);
+      //cleanFaces.e, face);
     }
   }
-  return cleanFaces;
+  return faces;
 }
 void checkContinuity() {
   // TODO Complete this
+}
+
+Rectangle[] removeRect(Rectangle[] faces, int item) {
+  Rectangle outgoing[] = new Rectangle[faces.length - 1];
+  System.arraycopy(faces, 0, outgoing, 0, item);
+  System.arraycopy(faces, item+1, outgoing, item, faces.length - (item + 1));
+  return outgoing;
 }
 void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
   /**
@@ -645,10 +685,13 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
       if (debugMode) line(gridX0 + (j * faces[i].width) / columns, gridY0, gridX0 + j * faces[i].width / columns, gridY0 + faces[i].height);
     }
     resetStroke();
-    // Draw hand gesture rectangle
-    Rectangle handRect = new Rectangle(faces[i].x + faces[i].width, faces[i].y + faces[i].height, handRectWidth, handRectHeight);
-    rect(handRect.x, handRect.y, handRect.width, handRect.height);
-    if (isRecording) recordData(handRect);
+
+    if (debugMode) {
+      // Draw hand gesture rectangle
+      Rectangle handRect = new Rectangle(faces[i].x + faces[i].width, faces[i].y + faces[i].height, handRectWidth, handRectHeight);
+      rect(handRect.x, handRect.y, handRect.width, handRect.height);
+      if (isRecording) recordData(handRect);
+    }
   }
 }
 
@@ -663,7 +706,7 @@ void recordData(Rectangle handRect) {
     }
   }
   textFont(f, 32);
-  text(currRecordFrame, 10,60);
+  text(currRecordFrame, 10, 60);
   motionData[currRecordFrame] = handFrameFlow;  
   currRecordFrame++;
   if (currRecordFrame == framesPerGesture) {
@@ -678,7 +721,7 @@ void saveData() {
     PVector[] frameFlow = motionData[i];    
     for (int j = 0; j < handRectWidth*handRectHeight; j++) {
       PVector pixel = frameFlow[j];
-      output.print(nfs(pixel.x,3,4) + "t" + nfs(pixel.y,3,4) + ",");
+      output.print(nfs(pixel.x, 3, 4) + "t" + nfs(pixel.y, 3, 4) + ",");
     }
     output.println();
   }
@@ -696,6 +739,7 @@ void keyPressed() {
     if (!brightPointMode) activeColumn = -1;
   } else if (key == 'd') {
     debugMode = !debugMode;
+    if (!isOpticalFlow) isOpticalFlow = true;
   } else if (key == '0' && debugMode) {
     facesCount = 0;
   } else if (key == '1' && debugMode) {
