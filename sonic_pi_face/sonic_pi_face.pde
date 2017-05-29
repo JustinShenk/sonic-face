@@ -617,7 +617,6 @@ Rectangle[] dropDistantFaces(Rectangle[] faces) {
    * @param  faces array of face rectangles
    * @return faces array of face rectanlges without remote faces
    */
-  Rectangle[] cleanFaces = {};
   int maxWidth = 0;
   // Get largest (nearest) face for comparison
   for (Rectangle face : faces) {
@@ -684,23 +683,29 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
     }
     resetStroke();
 
-    if (debugMode) {
+    if (isHandRect) {
       // Draw hand gesture rectangle
       Rectangle handRect = new Rectangle(faces[i].x + faces[i].width, faces[i].y + faces[i].height, handRectWidth, handRectHeight);
       rect(handRect.x, handRect.y, handRect.width, handRect.height);
-      if (isRecording) recordData(handRect);
+      text("gesture:" + gestureClassification[0], 10, 80);
+      if (isRecording) recordData(handRect, gestureClassification[0]);
     }
   }
 }
 
-void recordData(Rectangle handRect) {  
+void recordData(Rectangle handRect, String gestureClass) {  
   PVector[] handFrameFlow = new PVector[handRect.width * handRect.height];
-  // Collate flow within frame into `handRect.width * handRect.height` x 1 vector
+  // Vectorize window matrix into (`handRect.width` x `handRect.height`) x 1 column vector
   PVector flowAtPoint;            
-  for (int handRows = 0; handRows < handRect.height; handRows++) {
-    for (int handCols = 0; handCols < handRect.width; handCols++) {
-      flowAtPoint = opencv.getFlowAt(handRect.x + handCols, handRect.y + handRows);
-      handFrameFlow[handRows * 40 + handCols] = flowAtPoint;
+  for (int handRow = 0; handRow < handRect.height; handRow++) {
+    for (int handCol = 0; handCol < handRect.width; handCol++) {
+      try {
+        flowAtPoint = opencv.getFlowAt(handRect.x + handCol, handRect.y + handRow);
+        handFrameFlow[handRow * 40 + handCol] = flowAtPoint;
+      } 
+      catch(NullPointerException e) {
+        println("failure at " + handRow + handCol + handRect.x + handRect.y);
+      }
     }
   }
   textFont(f, 32);
