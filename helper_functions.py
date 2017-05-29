@@ -1,8 +1,6 @@
 import os
 import numpy as np
 
-print("Helper functions imported")
-
 def load_data(data_dir, filename):
     with open(os.path.join(data_dir,filename), 'r') as file:
         raw = file.read().replace('t', ',').split(',')
