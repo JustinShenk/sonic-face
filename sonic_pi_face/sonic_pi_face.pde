@@ -27,7 +27,7 @@ int my1;
 int mx2=0;
 int my2;
 int columns = 4;
-
+int fps = 10;
 int facesCount = 0;
 PVector loc;
 int tempo;
@@ -66,10 +66,13 @@ color[] colorList = {RED, BLUE, GREEN, VIOLET};
 // 0: 1 face is kick + clap, 2 face is synth
 int[] selectorPosition = {0, 0, 0, 0, 0};
 int mode = 0; // First player controls which instruments (FIXME)
+// TODO: Refactor booleans within `HashMap<String, boolean>`
 boolean brightPointMode = false;
 boolean debugMode = false;
 boolean isOpticalFlow = false;
 boolean isRecording = false;
+boolean isActivityBar = false;
+boolean isHandRect = false;
 int framesPerGesture = 10;
 PVector[][] motionData = new PVector[framesPerGesture][handRectWidth*handRectHeight];
 
@@ -88,6 +91,7 @@ String[][] faceTexts = {
 
 PrintWriter output;
 int currRecordFrame = 0;
+String[] gestureClassification = {"open-close"};
 
 void setup() {
   size(640, 480);
@@ -101,13 +105,7 @@ void setup() {
   oscP5 = new OscP5(this, 8000);
   sonicPi = new NetAddress("127.0.0.1", 4559);
   initializeUI();
-  int m = minute();
-  int h = hour();
-  int d = day();
-  int month = month();
-  int y = year();
-  String filename = "data-" + h + "-" + m + "-" + d + "-" + month + "-" + y + ".txt";
-  output = createWriter(filename);
+  frameRate(fps);
 }
 
 void initializeUI() {  
@@ -200,7 +198,7 @@ void draw() {
     textSize(8);
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
-    if (debugMode) drawActivityBar(); // Optional
+    if (debugMode && isActivityBar) drawActivityBar(); // Optional
   } 
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
