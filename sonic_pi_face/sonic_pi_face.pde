@@ -105,7 +105,21 @@ void setup() {
   oscP5 = new OscP5(this, 8000);
   sonicPi = new NetAddress("127.0.0.1", 4559);
   initializeUI();
-  frameRate(fps);
+  frameRate(fps);  
+  makeDataDir();
+}
+
+void makeDataDir() {
+  File dataDir = new File("data");
+  if (!dataDir.exists()) {
+
+    try {
+      dataDir.mkdir();
+    }
+    catch(SecurityException e) {
+      println("You don't have permissions to create the `data` directory.");
+    }
+  }
 }
 
 void initializeUI() {  
