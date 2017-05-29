@@ -715,21 +715,39 @@ void recordData(Rectangle handRect, String gestureClass) {
   if (currRecordFrame == framesPerGesture) {
     isRecording = false;
     currRecordFrame = 0;
-    saveData();
+    saveData(gestureClass);
   }
 }
 
-void saveData() {
-  for (int i= 0; i < framesPerGesture; i++) {
-    PVector[] frameFlow = motionData[i];    
-    for (int j = 0; j < handRectWidth*handRectHeight; j++) {
-      PVector pixel = frameFlow[j];
-      output.print(nfs(pixel.x, 3, 4) + "t" + nfs(pixel.y, 3, 4) + ",");
+void saveData(String gestureClass) {
+  try {
+    getWriter(gestureClass);
+    for (int i= 0; i < framesPerGesture; i++) {    
+      PVector[] frameFlow = motionData[i];    
+      for (int j = 0; j < handRectWidth*handRectHeight; j++) {
+        PVector pixel = frameFlow[j];      
+        output.print(nfs(pixel.x, 3, 4) + "t" + nfs(pixel.y, 3, 4) + ",");
+      }
+      output.println();
     }
-    output.println();
+    output.flush();
+    output.close();
+    output = null;
+  } 
+  catch (NullPointerException e) {
+    println("Cannot save.");
   }
-  output.flush();
-  output.close();
+}
+
+void getWriter(String gestureClass) {
+  int s = second();
+  int m = minute();
+  int h = hour();
+  int d = day();
+  int month = month();
+  int y = year();
+  String filename = y + nf(month, 2) + nf(d, 2) + nf(h, 2) + nf(m, 2) + nf(s,2) + gestureClass + ".txt";
+  output = createWriter("data/" + filename);
 }
 
 void keyPressed() {
@@ -757,9 +775,11 @@ void keyPressed() {
     facesCount = 5;
   } else if (key == 'o') {
     isOpticalFlow = !isOpticalFlow;
-  } else if (key == 'r') {
-    if (isRecording) saveData();
+  } else if (key == 'r') {    
     isRecording = !isRecording;
+    if (isRecording) saveData(gestureClassification[0]);
+  } else if (key == 'g') {
+    isHandRect = !isHandRect;
   }
   if (value == 0) {
     value = 255;
@@ -797,13 +817,17 @@ PVector getMotion(Rectangle r, int index, boolean activityBar, boolean totalMoti
    * @return            the vector of motion in the rectangle
    */
   PVector motion = new PVector();
+
+  // Catch for going out of frame
   if (r.x + r.width > screenwidth) r.width = screenwidth - r.x -1;
   if (r.y + r.height > screenheight) r.height = screenheight - r.y -1;
+
+  // Catch empty rectangle
   if (r.height < 1 || r.width < 1) {
     return motion.set(0., 0.);
   }
   try {
-    if (totalMotion)
+    if (totalMotion) // As opposed to average motion
       motion = opencv.getTotalFlowInRegion(r.x, r.y, r.width, r.height);
     else
       motion = opencv.getAverageFlowInRegion(r.x, r.y, r.width, r.height);
