@@ -621,7 +621,7 @@ Rectangle[] removeRect(Rectangle[] faces, int item) {
   System.arraycopy(faces, item+1, outgoing, item, faces.length - (item + 1));
   return outgoing;
 }
-void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
+void readSigns(Rectangle[] faces, float controllerStartOffsetY) {
   /**
    * Read signs on users' controllers
    * @param  faces array of player face rectangles used for position
@@ -665,8 +665,15 @@ void readSigns(Rectangle[] faces, int controllerStartOffsetY) {
       // Draw hand gesture rectangle
       Rectangle handRect = new Rectangle(faces[i].x + faces[i].width, faces[i].y + faces[i].height, handRectWidth, handRectHeight);
       rect(handRect.x, handRect.y, handRect.width, handRect.height);
-      text("gesture:" + gestureClassification[0], 10, 80);
-      if (isRecording) recordData(handRect, gestureClassification[0]);
+      text("gesture:" + gestureClassification[0], 10, 160);
+      if (isRecording) {
+        if (recordTimer > 0) // Between-loop timer
+          recordData(handRect, gestureClassification[0]);
+        else {
+          recordTimer -= 1;
+          text("Countdown: " + recordTimer, 200,50);
+        }
+      }
     }
   }
 }
@@ -689,12 +696,13 @@ void recordData(Rectangle handRect, String gestureClass) {
   textFont(f, 32);
   text(currRecordFrame, 10, 60);
   motionData[currRecordFrame] = handFrameFlow;  
-  currRecordFrame++;
+  currRecordFrame++;  
   if (currRecordFrame == framesPerGesture) {
-    isRecording = false;
-    currRecordFrame = 0;
-    saveData(gestureClass);
+    currRecordFrame = 0; // Reset
+    saveData(gestureClass); // Save to file with timestamp
+    recordTimer = 10; // Reset
   }
+  textFont(f, 16); // Reset
 }
 
 void saveData(String gestureClass) {
