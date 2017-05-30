@@ -47,7 +47,7 @@ int divisions = 16;
 int changeInstrumentCountdown;
 boolean rotationFeature = true;
 float angle = 2 * PI / divisions;
-int controllerStartOffsetY = 2;
+float controllerStartOffsetY = 2;
 int handRectWidth = 40;
 int handRectHeight = 40;
 Rectangle[] activityBar = new Rectangle[4];
@@ -89,6 +89,7 @@ String[][] faceTexts = {
   {"", "", "", "", ""}
 };
 
+int recordTimer = 10;
 PrintWriter output;
 int currRecordFrame = 0;
 String[] gestureClassification = {"open-close"};
@@ -251,6 +252,7 @@ void drawPartyText() {
   text("volume", 96, 30);
 
   fill(WHITE);
+  textFont(f, 16); // Reset
 }
 void ensureContinuity(Rectangle[] prevFaces) {
   /**
@@ -292,7 +294,7 @@ void drawController(Rectangle[] faces) {
   for (int i = 0; i < faces.length && i < 5; i++) { // Limit to 5 faces for testing
     Rectangle face = faces[i];
     int controllerStartX = face.x;
-    int controllerStartY = face.y + controllerStartOffsetY * face.height;
+    int controllerStartY = face.y + int(controllerStartOffsetY * face.height);
 
     // Draw volume bar below face
     stroke(RED);
@@ -440,7 +442,7 @@ void adjustSelector(int direction, Rectangle face, int facesIndex) {
       stroke(RED);
       strokeWeight(3);
       int lineLength = face.width * selectorPosition[i] / divisions;
-      int volumeY = (controllerStartOffsetY-1) * face.height + face.y;
+      int volumeY = int(controllerStartOffsetY-1) * face.height + face.y;
       line(face.x+lineLength, volumeY-3, face.x+lineLength, volumeY+3);
     }
   }
