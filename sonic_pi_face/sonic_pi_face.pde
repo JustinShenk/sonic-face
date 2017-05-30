@@ -760,7 +760,7 @@ void getWriter(String gestureClass) {
   int d = day();
   int month = month();
   int y = year();
-  String filename = y + nf(month, 2) + nf(d, 2) + nf(h, 2) + nf(m, 2) + nf(s, 2) + gestureClass + ".txt";
+  String filename = y + "-" + nf(month, 2) + "-" + nf(d, 2) + "_" + nf(h, 2) + nf(m, 2) + nf(s, 2) + "_" + gestureClass + ".txt";
   output = createWriter("data/" + filename);
 }
 
