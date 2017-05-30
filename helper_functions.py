@@ -1,10 +1,93 @@
 import os
 import numpy as np
 
-def load_data(data_dir, filename):
-    with open(os.path.join(data_dir,filename), 'r') as file:
-        raw = file.read().replace('t', ',').split(',')
 
-    data = np.asarray(raw)[0:32000].reshape((10,40,40,2))
-    data = data.astype(np.float)
+def load_data(filepath):
+    """Returns data from `filepath`."""
+    with open(os.path.abspath(filepath), 'r') as _file:
+        raw = _file.read().replace('t', ',').split(',')
+    _raw_array = np.asarray(raw)
+    try:
+        _data = _raw_array[0:32000].reshape((10, 40, 40, 2))
+        _data = _data.astype(np.float)
+    except ValueError:
+        print("Incomplete data sample found at ", filepath)
+        return None
+    return _data
+
+
+def get_data_files(data_dir, gesture=None):
+    files = [os.path.abspath(os.path.join(data_dir, file))
+             for file in os.listdir(data_dir)]
+    files = [filename for filename in files if any(
+        ext in filename for ext in ['.csv', '.txt'])]
+    if gesture is not None:
+        return [x for x in files if gesture in x]
+    else:
+        return files
+
+
+def get_gesture_data(files, gesture=''):
+    """Get all data samples from `files` with `gesture` if specified.
+
+    Args:
+        files (list<str>)
+        gesture (str)
+
+    Returns:
+        data (dict<list<numpy.array>>)
+    """
+    # Find `files` containing `gesture`
+    file_list = [file for file in files if gesture in file]
+    gestures = get_gesture_set(file_list, gesture)
+    data = {}
+    for g in gestures:
+        gesture_files = [file for file in file_list if g in file]
+        gesture_data = [load_data(gesture_file)
+                        for gesture_file in gesture_files]
+        # In case incomplete data
+        gesture_data = [x for x in gesture_data if x is not None]
+        data[g] = gesture_data
     return data
+
+
+def get_gesture_set(file_list, gesture=''):
+    """Get set of unique gestures in list of `files`
+
+    Args:
+        file_list (list<str>)
+        gesture (string)
+
+    Returns:
+        gestures (set<str>)
+
+    """
+    if gesture is not '':
+        gestures = set([gesture])
+    else:
+        # Get set of gestures
+        gestures = set([file.split('_')[-1].split('.')[0]
+                        for file in file_list])
+        return gestures
+
+
+def display_frames(sample, coordinate):
+    """Display frames in animation.
+
+    Args:
+        sample (numpy.array) - data sample containing 10 frames
+        coordinate (int) - 0 for `x` coordinate, 1 for `y` coordinate
+
+    """
+    fig = plt.figure()
+    im = plt.imshow(frame, animated=True)
+
+    def update(i):
+
+        frame = sample[i][:, :, 0]
+        im.set_array(frame)
+        return im,
+
+    ani = animation.FuncAnimation(
+        fig, update, frames=range(10), interval=200, repeat=True)
+    plt.show()
