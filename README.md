@@ -13,7 +13,7 @@ cd sonic-face
 
 Open Sonic Pi and load the `.rb` file. Change the `dir` path to the path on your computer, e.g., `/path/to/sonic-face/samples`.
 
-Run the file and then open the `.pde` file in Processing. You may need to install OpenCV and other dependencies in Processing.
+Run the file and then open the `.pde` file in Processing. Install "OpenCV for Processing", "oscP5," and other missing dependencies in Processing via `Sketch` -> `Import Library...`.
 
 ## Demo
 ![Early demo of the interface](interface_early_demo.gif)
@@ -22,11 +22,15 @@ Run the file and then open the `.pde` file in Processing. You may need to instal
 
 Instruments are cued by the presence of faces. The `d` key can be used to debug, followed by the number of faces (5 for the maximum). The `o` key activates the user interface. The `up` key scrolls through modes.
 
+## Collect data for gesture analysis with optical flow
+
+After activating the user interface with `o`, press `g` to get the hand gesture bounding box and `r` to start the recording loop. Data is saved to the `data` folder.
+
 ## Todo
 
  - [X] Presence of faces triggers hierarchy of instruments (Beat, Clap, Cello + Snare, Mod Saw, and Vocals)
  - [X] Users can cycle through instruments via an augmented reality interface
- - [ ] Proximity of faces determines volume of instruments
+ - [X] Proximity of faces determines volume of instruments
  - [ ] Instantaneous activation of instrument by parsing loops
  - [ ] Hand-activated direction of music
  - [ ] Brightest point activation of music
