@@ -1,6 +1,7 @@
 import os
 import numpy as np
-
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 def load_data(filepath):
     """Returns data from `filepath`."""
@@ -79,11 +80,11 @@ def display_frames(sample, coordinate):
         coordinate (int) - 0 for `x` coordinate, 1 for `y` coordinate
 
     """
+    frame = sample[0]
     fig = plt.figure()
-    im = plt.imshow(frame, animated=True)
+    im = plt.imshow(frame[...,0], animated=True)
 
     def update(i):
-
         frame = sample[i][:, :, 0]
         im.set_array(frame)
         return im,
