@@ -667,11 +667,11 @@ void readSigns(Rectangle[] faces, float controllerStartOffsetY) {
       rect(handRect.x, handRect.y, handRect.width, handRect.height);
       text("gesture:" + gestureClassification[0], 10, 160);
       if (isRecording) {
-        if (recordTimer > 0) // Between-loop timer
-          recordData(handRect, gestureClassification[0]);
-        else {
+        if (recordTimer > 0) { // Between-loop timer 
+          text("Countdown: " + recordTimer, 200, 50);
           recordTimer -= 1;
-          text("Countdown: " + recordTimer, 200,50);
+        } else {
+          recordData(handRect, gestureClassification[0]);
         }
       }
     }
