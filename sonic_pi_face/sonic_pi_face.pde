@@ -92,7 +92,7 @@ String[][] faceTexts = {
 int recordTimer = 10;
 PrintWriter output;
 int currRecordFrame = 0;
-String[] gestureClassification = {"open-close"};
+String[] gestureClassification = {"slide-horizontally"};
 
 void setup() {
   size(640, 480);
