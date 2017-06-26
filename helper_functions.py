@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+from integral_try import i_image, get_integral
+
 def load_data(filepath):
     """Returns data from `filepath`."""
     with open(os.path.abspath(filepath), 'r') as _file:
@@ -71,6 +73,25 @@ def get_gesture_set(file_list, gesture=''):
                         for file in file_list])
         return gestures
 
+
+def reduce_dimensions(sample, rows = 4, cols = 4):
+    '''Reduce dimensions of images in `sample` using integral image.'''
+    array = np.zeros((10,rows*cols,2))
+    sections = []
+    for i in range(rows):
+        for j in range(cols):
+            x0 = (40/rows) * (i)
+            y0 = (40/rows) * (j)
+            x1 = (40/rows) * (i+1) -1
+            y1 = (40/rows) * (j+1) -1
+            point = np.array([x0,y0,x1,y1])
+            sections.append(point)
+    for ind,frame in enumerate(sample):
+        image = i_image(frame)
+        for sect_ind, section in enumerate(sections):
+            feature = get_integral(image, *section)
+            array[ind][sect_ind] = feature
+    return array
 
 def display_frames(sample, coordinate):
     """Display frames in animation.
