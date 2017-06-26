@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
@@ -73,32 +74,17 @@ def get_gesture_set(file_list, gesture=''):
                         for file in file_list])
         return gestures
 
-"""
-def get_sections(rows , cols ):
-    '''Reduce dimensions of images in `sample` using integral image.'''
+def reduce_dimensions(sample, rows=4, cols=4):
     array = np.zeros((10,rows*cols,2))
     sections = []
     for i in range(rows):
         for j in range(cols):
-            x0 = (40//rows) * (i)
-            y0 = (40//rows) * (j)
-            x1 = (40//rows) * (i+1) -1
-            y1 = (40//rows) * (j+1) -1
+            x0 = (40//cols) * (j)
+            y0 = (40//rows) * (i)
+            x1 = (40//cols) * (j+1) -1
+            y1 = (40//rows) * (i+1) -1
             point = np.array([x0,y0,x1,y1])
-            sections.append(point)
-    return sections
-"""
-
-def reduce_dimensions(sample, rows, cols):
-    array = np.zeros((10,rows*cols,2))
-    sections = []
-    for i in range(rows):
-        for j in range(cols):
-            x0 = (40//rows) * (i)
-            y0 = (40//rows) * (j)
-            x1 = (40//rows) * (i+1) -1
-            y1 = (40//rows) * (j+1) -1
-            point = np.array([x0,y0,x1,y1])
+            print(point)
             sections.append(point)
 
     for ind,frame in enumerate(sample):
@@ -107,6 +93,15 @@ def reduce_dimensions(sample, rows, cols):
             feature = get_integral(image, *section)
             array[ind][sect_ind] = feature
     return array
+
+# def reduce_dimensions(sample,rows,cols):
+#     array = np.zeros((10,rows*cols,2))
+#     for ind,frame in enumerate(sample):
+#         image = i_image(frame)
+#         for sect_ind, section in enumerate(sections):
+#             feature = get_integral(image, *section)
+#             array[ind][sect_ind] = feature
+#     return array
 
 def display_frames(sample, coordinate=None):
     """Display frames in animation.
