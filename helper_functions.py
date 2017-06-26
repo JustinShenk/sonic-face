@@ -93,7 +93,7 @@ def reduce_dimensions(sample, rows = 4, cols = 4):
             array[ind][sect_ind] = feature
     return array
 
-def display_frames(sample, coordinate):
+def display_frames(sample, coordinate=None):
     """Display frames in animation.
 
     Args:
@@ -101,15 +101,49 @@ def display_frames(sample, coordinate):
         coordinate (int) - 0 for `x` coordinate, 1 for `y` coordinate
 
     """
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.subplots_adjust(top=0.8)
+    ax1.set_title('Lateral motion')
+    ax2.set_title('Vertical motion')
+    ax1.set(aspect=1)
+    ax2.set(aspect=1)
     frame = sample[0]
-    fig = plt.figure()
-    im = plt.imshow(frame[...,0], animated=True)
 
+    im1 = ax1.imshow(frame[...,0], animated=True,interpolation='gaussian',aspect='equal')
+    im2 = ax2.imshow(frame[...,1], animated=True,interpolation='gaussian',aspect='equal')
     def update(i):
-        frame = sample[i][:, :, 0]
-        im.set_array(frame)
-        return im,
+        fig.suptitle('Frame {}/10'.format(i+1))
+        frameX = sample[i][..., 0]
+        im1.set_array(frameX)
+        frameY = sample[i][..., 1]
+        im2.set_array(frameY)
+        return im1,im2,
 
     ani = animation.FuncAnimation(
         fig, update, frames=range(10), interval=200, repeat=True)
-    plt.show()
+    return ani
+
+def feature_extract(data,rows=4,cols=4):
+    """Extract features from 40*40 optical flow samples in `data` by using integral image
+    of dimensions `rows` and `cols`.
+
+    Args:
+        data: np.ndarray
+        rows: int
+        cols: int
+
+    Returns:
+        df_red: Pandas DataFrame
+
+    """
+    df_red = pd.DataFrame()
+    for gesture in list(data):
+        gesture_samples = []
+        df = pd.DataFrame()
+        for sample in data[gesture]:
+            red = reduce_dimensions(sample,rows=rows,cols=cols)
+            red = red[4].flatten() # Get middle frame
+            df = df.append(pd.Series(red),ignore_index=True)
+        df['label'] = gesture
+        df_red = df_red.append(df,ignore_index=True)
+    return df_red
