@@ -73,19 +73,34 @@ def get_gesture_set(file_list, gesture=''):
                         for file in file_list])
         return gestures
 
-
-def reduce_dimensions(sample, rows = 4, cols = 4):
+"""
+def get_sections(rows , cols ):
     '''Reduce dimensions of images in `sample` using integral image.'''
     array = np.zeros((10,rows*cols,2))
     sections = []
     for i in range(rows):
         for j in range(cols):
-            x0 = (40/rows) * (i)
-            y0 = (40/rows) * (j)
-            x1 = (40/rows) * (i+1) -1
-            y1 = (40/rows) * (j+1) -1
+            x0 = (40//rows) * (i)
+            y0 = (40//rows) * (j)
+            x1 = (40//rows) * (i+1) -1
+            y1 = (40//rows) * (j+1) -1
             point = np.array([x0,y0,x1,y1])
             sections.append(point)
+    return sections
+"""
+
+def reduce_dimensions(sample, rows, cols):
+    array = np.zeros((10,rows*cols,2))
+    sections = []
+    for i in range(rows):
+        for j in range(cols):
+            x0 = (40//rows) * (i)
+            y0 = (40//rows) * (j)
+            x1 = (40//rows) * (i+1) -1
+            y1 = (40//rows) * (j+1) -1
+            point = np.array([x0,y0,x1,y1])
+            sections.append(point)
+
     for ind,frame in enumerate(sample):
         image = i_image(frame)
         for sect_ind, section in enumerate(sections):
