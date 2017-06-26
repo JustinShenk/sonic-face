@@ -84,7 +84,6 @@ def reduce_dimensions(sample, rows=4, cols=4):
             x1 = (40//cols) * (j+1) -1
             y1 = (40//rows) * (i+1) -1
             point = np.array([x0,y0,x1,y1])
-            print(point)
             sections.append(point)
 
     for ind,frame in enumerate(sample):
