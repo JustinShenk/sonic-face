@@ -258,7 +258,7 @@ def get_feature_set(data_sets,divs,row,col):
     ind = 0
     for r in divs:
         for c in divs:
-            if r == row && c == col:
+            if r == row and c == col:
                 return data_sets[ind]
                 ind += 1
 
