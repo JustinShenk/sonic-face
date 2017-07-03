@@ -231,7 +231,7 @@ def save_data_sets(data_sets, divs):
                 print("File saved to {}".format(filepath))
 
 
-def make_feature_sets(data, divs=[2, 3, 4, 5]):
+def make_feature_sets(data, divs=[4, 10, 20]):
     """Create various feature extraction sets from `data` for hyperparameter
     optimization with permutation `divs` rows and cols.
 
@@ -260,7 +260,7 @@ def get_feature_set(data_sets,divs,row,col):
         for c in divs:
             if r == row and c == col:
                 return data_sets[ind]
-                ind += 1
+            ind += 1
 
 
 def get_data(data, key):
@@ -394,7 +394,11 @@ def get_combis(divs):
 
 
 def optimize_feature_dimensions(data_sets, divs, method='rf',
-                                display_confusion_matrix=False):
+                                display_confusion_matrix=False,
+                                gestures= ['slide-vertically',
+                                           'waving-beauty-pageant-style',
+                                           'empty',
+                                           'slide-horizontally']):
     """Compare performance of random tree classifier on `data_sets` with `divs`
     number of factors.
 
@@ -450,8 +454,7 @@ def optimize_feature_dimensions(data_sets, divs, method='rf',
 
 
 def random_forest(data, gestures=['slide-vertically',
-                                  'waving-beauty-pageant-style',
-                                  'open-close', 'empty'],
+                                  'waving-beauty-pageant-style', 'empty'],
                   max_depth=None, max_features='auto',
                   n_estimators=15, features=(-1, -1),
                   display_confusion_matrix=False):
@@ -488,7 +491,7 @@ def random_forest(data, gestures=['slide-vertically',
 
 
 def plot_confusion_matrix(cm, classes,
-                          normalize=False,
+                          normalize=True,
                           title='Confusion matrix',
                           cmap=plt.cm.Blues):
     """
@@ -499,7 +502,7 @@ def plot_confusion_matrix(cm, classes,
     fig, cm_ax = plt.subplots()
     img = cm_ax.imshow(cm, interpolation='nearest', cmap=cmap)
     cm_ax.set_title(title)
-    fig.colorbar(img, ax=cm_ax, ticks=[0, 100])
+    fig.colorbar(img, ax=cm_ax, ticks=[0.0, 1.0])
     tick_marks = np.arange(len(classes))
     cm_ax.set_xticklabels([''] + classes)
     cm_ax.set_yticklabels(classes)
@@ -526,7 +529,7 @@ def plot_confusion_matrix(cm, classes,
 
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, cm[i, j],
+        plt.text(j, i, '{:.2f}'.format(cm[i, j]),
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
 
