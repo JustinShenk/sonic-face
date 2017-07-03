@@ -1,15 +1,24 @@
 import os
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from sklearn.neural_network import MLPClassifier as mlpc
+from sklearn import svm
 from sklearn import linear_model as lm
-from sklearn import svm as svm
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, AdaBoostClassifier, BaggingClassifier, GradientBoostingClassifier
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier as mlpc
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
+                              AdaBoostClassifier, BaggingClassifier,
+                              GradientBoostingClassifier)
+
+
+# Print only two decimal places
+np.set_printoptions(precision=2)
+
 
 def load_data(filepath):
     """Returns data from `filepath`."""
@@ -81,19 +90,20 @@ def get_gesture_set(file_list, gesture=''):
                         for file in file_list])
         return gestures
 
+
 def reduce_dimensions(sample, rows=4, cols=4):
-    array = np.zeros((10,rows*cols,2))
+    array = np.zeros((10, rows * cols, 2))
     sections = []
     for i in range(rows):
         for j in range(cols):
-            x0 = (40//cols) * (j)
-            y0 = (40//rows) * (i)
-            x1 = (40//cols) * (j+1) -1
-            y1 = (40//rows) * (i+1) -1
-            point = np.array([x0,y0,x1,y1])
+            x0 = (40 // cols) * (j)
+            y0 = (40 // rows) * (i)
+            x1 = (40 // cols) * (j + 1) - 1
+            y1 = (40 // rows) * (i + 1) - 1
+            point = np.array([x0, y0, x1, y1])
             sections.append(point)
 
-    for ind,frame in enumerate(sample):
+    for ind, frame in enumerate(sample):
         image = i_image(frame)
         for sect_ind, section in enumerate(sections):
             feature = get_integral(image, *section)
@@ -108,6 +118,7 @@ def reduce_dimensions(sample, rows=4, cols=4):
 #             feature = get_integral(image, *section)
 #             array[ind][sect_ind] = feature
 #     return array
+
 
 def display_frames(sample, coordinate=None):
     """Display frames in animation.
@@ -125,21 +136,25 @@ def display_frames(sample, coordinate=None):
     ax2.set(aspect=1)
     frame = sample[0]
 
-    im1 = ax1.imshow(frame[...,0], animated=True,interpolation='gaussian',aspect='equal')
-    im2 = ax2.imshow(frame[...,1], animated=True,interpolation='gaussian',aspect='equal')
+    im1 = ax1.imshow(frame[..., 0], animated=True,
+                     interpolation='gaussian', aspect='equal')
+    im2 = ax2.imshow(frame[..., 1], animated=True,
+                     interpolation='gaussian', aspect='equal')
+
     def update(i):
-        fig.suptitle('Frame {}/10'.format(i+1))
+        fig.suptitle('Frame {}/10'.format(i + 1))
         frameX = sample[i][..., 0]
         im1.set_array(frameX)
         frameY = sample[i][..., 1]
         im2.set_array(frameY)
-        return im1,im2,
+        return im1, im2,
 
     ani = animation.FuncAnimation(
         fig, update, frames=range(10), interval=200, repeat=True)
     return ani
 
-def feature_extract(data,rows=4,cols=4):
+
+def feature_extract(data, rows=4, cols=4):
     """Extract features from 40*40 optical flow samples in `data` by using integral image
     of dimensions `rows` and `cols`.
 
@@ -157,39 +172,45 @@ def feature_extract(data,rows=4,cols=4):
         gesture_samples = []
         df = pd.DataFrame()
         for sample in data[gesture]:
-            red = reduce_dimensions(sample,rows=rows,cols=cols)
-            red = red[4].flatten() # Get middle frame
-            df = df.append(pd.Series(red),ignore_index=True)
+            red = reduce_dimensions(sample, rows=rows, cols=cols)
+            red = red[4].flatten()  # Get middle frame
+            df = df.append(pd.Series(red), ignore_index=True)
         df['label'] = gesture
-        df_red = df_red.append(df,ignore_index=True)
+        df_red = df_red.append(df, ignore_index=True)
     return df_red
 
 # Takes an original image and calculates the integral image
 # cumsum takes an array as input
 # this works on our vector array as expected (sums over the vectors)
-def i_image (orig_image):
-	iimage = orig_image.cumsum(1).cumsum(0)
-	return iimage;
 
-## To get the integral over a certain rectangle, input the topleft and bottomright coordinates
-## depending on the location of the corner points, take the correct values from the integral image
-def get_integral (integral_image, topleftx, toplefty, bottomrightx, bottomrighty):
 
-	integral = 0
-	integral += integral_image[bottomrightx,bottomrighty]
+def i_image(orig_image):
+    iimage = orig_image.cumsum(1).cumsum(0)
+    return iimage
 
-	if (topleftx - 1 >= 0) and (toplefty - 1 >=0):
-		integral += integral_image[topleftx - 1, toplefty - 1]
+# To get the integral over a certain rectangle, input the topleft and bottomright coordinates
+# depending on the location of the corner points, take the correct values from the integral image
 
-	if (topleftx - 1 >= 0):
-		integral -= integral_image[topleftx - 1, bottomrighty]
 
-	if (toplefty - 1 >= 0):
-		integral -= integral_image[bottomrightx, toplefty - 1]
+def get_integral(integral_image, topleftx,
+                 toplefty, bottomrightx, bottomrighty):
 
-	return integral
+    integral = 0
+    integral += integral_image[bottomrightx, bottomrighty]
 
-def save_data_sets(data_sets,divs):
+    if (topleftx - 1 >= 0) and (toplefty - 1 >= 0):
+        integral += integral_image[topleftx - 1, toplefty - 1]
+
+    if (topleftx - 1 >= 0):
+        integral -= integral_image[topleftx - 1, bottomrighty]
+
+    if (toplefty - 1 >= 0):
+        integral -= integral_image[bottomrightx, toplefty - 1]
+
+    return integral
+
+
+def save_data_sets(data_sets, divs):
     """Saves each dataFrame in `data_sets` with coordinates of row x column
     in `divs` to csv.
 
@@ -200,16 +221,17 @@ def save_data_sets(data_sets,divs):
     indx = 0
     for r in divs:
         for c in divs:
-            filepath = 'data/data_red_{}x{}.csv'.format(r,c)
+            filepath = 'data/data_red_{}x{}.csv'.format(r, c)
             if os.path.exists(filepath):
                 print("File found at {}".format(filepath))
-                indx+=1
+                indx += 1
             else:
                 data_sets[indx].to_csv(filepath)
-                indx+=1
+                indx += 1
                 print("File saved to {}".format(filepath))
 
-def get_feature_sets(data,divs=[2,3,4,5]):
+
+def make_feature_sets(data, divs=[2, 3, 4, 5]):
     """Create various feature extraction sets from `data` for hyperparameter
     optimization with permutation `divs` rows and cols.
 
@@ -224,9 +246,22 @@ def get_feature_sets(data,divs=[2,3,4,5]):
     data_sets = []
     for rows in divs:
         for cols in divs:
-            df_red = feature_extract(data,rows=rows,cols=cols)
+            df_red = feature_extract(data, rows=rows, cols=cols)
             data_sets.append(df_red)
     return data_sets
+
+def get_feature_set(data_sets,divs,row,col):
+    """Return feature set with `row` rows and `col` cols from `data_sets` made
+    with divs` permutations.
+
+    """
+    ind = 0
+    for r in divs:
+        for c in divs:
+            if r == row && c == col:
+                return data_sets[ind]
+                ind += 1
+
 
 def get_data(data, key):
     """Returns flattened array from `data` dictionary with gesture `key`.
@@ -243,17 +278,21 @@ def get_data(data, key):
     data_array = np.asarray(data_list)
 
     # Flatten array to n x 32000
-    flattened_data = data_array.reshape((len(data_array),10*1600*2))
+    flattened_data = data_array.reshape((len(data_array), 10 * 1600 * 2))
     return flattened_data
+
 
 def scale(data, target_gesture):
     """Scale data using max and min within the `target_gesture` of `data`.
 
     """
-    data *= (np.max(target_gesture) + np.abs(np.min(target_gesture))) - np.min(target_gesture)
+    data *= (np.max(target_gesture) + np.abs(np.min(target_gesture))
+             ) - np.min(target_gesture)
     return data
 
-def encode_target(df, target_column, gestures=['open-close','empty','slide-horizontally']):
+
+def encode_target(df, target_column,
+                  gestures=['open-close', 'empty', 'slide-horizontally']):
     """Add column to df with integers for the target.
     Original from: https://github.com/joaocalixto/decisionTreeIdentityManagement/
         blob/master/decisionTree%5Bchrisstrelioff%5D.py
@@ -276,6 +315,7 @@ def encode_target(df, target_column, gestures=['open-close','empty','slide-horiz
 
     return (df_mod, targets)
 
+
 def visualize_tree(tree, feature_names):
     """Create tree png using graphviz.
     *Source unknown.*
@@ -296,7 +336,8 @@ def visualize_tree(tree, feature_names):
         exit("Could not run dot, ie graphviz, to "
              "produce visualization")
 
-def class_split(data,gestures=['open-close','empty','slide-horizontally']):
+
+def class_split(data, gestures=None):
     """Collect data for training.
 
     Args:
@@ -308,15 +349,16 @@ def class_split(data,gestures=['open-close','empty','slide-horizontally']):
         Y:  numpy array (targets)
 
     """
-    if isinstance(data,pd.DataFrame):
+    if isinstance(data, pd.DataFrame):
         # Limit to `gesture` entries
         try:
             data = data.drop('Unnamed: 0', axis=1)
         except:
             pass
-        data = data[data['label'].isin(gestures)]
+        if gestures != None:
+            data = data[data['label'].isin(gestures)]
         data, targets = encode_target(data, 'label')
-        X = data.drop(['Target','label'], axis=1)
+        X = data.drop(['Target', 'label'], axis=1)
         Y = data['Target']
         return X, Y
     X_list = []
@@ -332,6 +374,7 @@ def class_split(data,gestures=['open-close','empty','slide-horizontally']):
     Y = np.hstack(Y_list)
     return X, Y
 
+
 def get_combis(divs):
     """Get permutations of `divs`.
 
@@ -346,12 +389,14 @@ def get_combis(divs):
     # Get list of all combinations of rows and columns
     for r in divs:
         for c in divs:
-            combis.append((r,c))
+            combis.append((r, c))
     return combis
 
-def optimize_feature_dimensions(data_sets, divs,method='rf'):
-    """Compare performance of random tree classifier on `data_sets` with `divs` number
-    of factors.
+
+def optimize_feature_dimensions(data_sets, divs, method='rf',
+                                display_confusion_matrix=False):
+    """Compare performance of random tree classifier on `data_sets` with `divs`
+    number of factors.
 
     Args:
         data_sets
@@ -362,105 +407,142 @@ def optimize_feature_dimensions(data_sets, divs,method='rf'):
         ax: Matplotlib axes object
 
     """
-    combis = get_combis(divs)
-    compare = np.zeros((len(divs),len(divs)))
-    com_array = np.asarray(combis)
-    x_labels = com_array[:,1]
-    y_labels = com_array[:,1]
-    x = np.arange(len(combis))
-    y = x
-    fig,ax = plt.subplots()
-    plt.xticks(x, x_labels)
-    plt.yticks(y, y_labels)
+    np.set_printoptions(precision=2)
 
+    # Get permutation of rows and columns for feature extraction
+    combis = get_combis(divs)
+    compare = np.zeros((len(divs), len(divs)))
+
+    # Compare classification accuracy of feature sets
     accuracies = []
     for idx, df in enumerate(data_sets):
-        if method=='rf':
+        if method == 'rf':
             # Set number of features and get random forest classification
             n_features = len(df.columns)
-            _, accuracy = random_forest(df, max_features=int(np.sqrt(n_features)),features=combis[idx])
-        elif method=='ada':
+            _, accuracy = random_forest(df,
+                                        max_features=int(np.sqrt(n_features)),
+                                        features=combis[idx],
+                                        display_confusion_matrix=True)
+        elif method == 'ada':
             _, accuracy = adaboost(df)
         # Get row and col from idx
         row = idx // len(divs)
         col = idx % len(divs)
-        compare[row,col] = accuracy
+        compare[row, col] = accuracy
         accuracies.append(accuracy)
-    im = ax.imshow(compare,vmin=min(accuracies),vmax=1.0,cmap=plt.get_cmap('Blues'))
-    plt.title("Accuracy vs Feature dimension - \nMethod: {}".format(method))
+
+    x_labels = y_labels = np.array(divs)
+    x = y = np.arange(len(compare))
+    fig, ax = plt.subplots()
+    plt.setp(ax, xticks=x, xticklabels=x_labels,
+             yticks=y, yticklabels=y_labels)
+    im = ax.imshow(compare, vmin=min(accuracies), vmax=1.0,
+                   cmap=plt.get_cmap('Blues'))
+    ax.set_title("Accuracy vs Feature dimension - \nMethod: {}".format(method))
     ax.set_xlabel('Number of columns per frame')
     ax.set_ylabel('Number of rows per frame')
-    fig.colorbar(im,ax=ax)
+    for y_val, row in enumerate(compare):
+        for x_val, col in enumerate(row):
+            c = '{:.2f}'.format(col)
+            ax.text(x_val,y_val, c, va='center', ha='center')
+    fig.colorbar(im, ax=ax)
     return ax
 
 
-def random_forest(data,labels=['slide-vertically','slide-horizontally','open-close'],max_depth=None, max_features='auto',n_estimators=15, features=(-1,-1)):
+def random_forest(data, gestures=['slide-vertically',
+                                  'waving-beauty-pageant-style',
+                                  'open-close', 'empty'],
+                  max_depth=None, max_features='auto',
+                  n_estimators=15, features=(-1, -1),
+                  display_confusion_matrix=False):
     """Classify `df` using random forest.
 
     Args:
         data: pandas dataFrame or numpy array
-        labels: list of strings
+        gestures: list of strings
+        max_depth: int
+        max_features: int
         features: tuple of ints
+        display_confusion_matrix: bool
 
     Returns:
         clf_forest: scikit-learn object
         accuracy: float
     """
     # Split data into train and test
-    X_train, X_test, y_train, y_test = data_split(data)
+    X_train, X_test, y_train, y_test = data_split(data, gestures=gestures)
 
-    clf_forest = RandomForestClassifier(n_estimators=n_estimators,max_features=max_features,max_depth = max_depth)
+    clf_forest = RandomForestClassifier(n_estimators=n_estimators,
+                                        max_features=max_features,
+                                        max_depth=max_depth)
     clf_forest = clf_forest.fit(X_train, y_train)
-    accuracy = clf_forest.score(X_test,y_test)
-    print("Predictions:\n{}".format(clf_forest.predict(X_test)))
-    print("Actual:\n{}".format(y_test[:10]))
-    print("Score for {}x{}:\n{}".format(features[0],features[1], accuracy))
+    accuracy = clf_forest.score(X_test, y_test)
+    if display_confusion_matrix:
+        cm = confusion_matrix(y_test, clf_forest.predict(X_test))
+        plot_confusion_matrix(cm, gestures)
+    else:
+        print("Predictions:\n{}".format(clf_forest.predict(X_test)))
+        print("Actual:\n{}".format(y_test[:10]))
+    print("Score for {}x{}:\n{}".format(features[0], features[1], accuracy))
     return clf_forest, accuracy
 
-def adaboost(data,max_depth=3,n_estimators=10):
-    """Adaboost classifier.
 
-    Args:
-        data: dataFrame or numpy array
-
-    Returns:
-        clf_adaboost: AdaBoostClassifier object
-
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
     """
-
-    # Split data into train and test
-    X_train, X_test, y_train, y_test = data_split(data)
-
-    clf_adaboost = AdaBoostClassifier(DecisionTreeClassifier(max_depth=max_depth), n_estimators=n_estimators)
-    clf_adaboost = clf_adaboost.fit(X_train, y_train)
-    accuracy = clf_adaboost.score(X_test,y_test)
-    print("Predictions:\n{}".format(clf_adaboost.predict(X_test)))
-    print("Actual:\n{}".format(y_test[:10]))
-    print("Score:\n{}".format(accuracy))
-    return clf_adaboost, accuracy
-
-def bagging(data):
-    """Bagging classifier.
-
-    Args:
-        data: dataFrame or numpy array
-
-    Returns:
-        clf_bagging: AdaBoostClassifier object
-
+    Source: sklearn tutorial (http://scikit-learn.org/).
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
     """
+    fig, cm_ax = plt.subplots()
+    img = cm_ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    cm_ax.set_title(title)
+    fig.colorbar(img, ax=cm_ax, ticks=[0, 100])
+    tick_marks = np.arange(len(classes))
+    cm_ax.set_xticklabels([''] + classes)
+    cm_ax.set_yticklabels(classes)
+    plt.setp(cm_ax, yticks=tick_marks, yticklabels=classes)
+    fig.autofmt_xdate()
+    # plt.xticks(tick_marks, classes, rotation=45)
+    # plt.yticks(tick_marks, classes)
+    # cm_ax.set_ticks(tick_marks)
+    # cm_ax.set_xticklabels([''] + classes)
+    # cm_ax.set_ylabelticklabels([''] + classes)
+    # plt.setp(cm_ax, xticks=tick_marks,
+    #          xticklabels=classes, yticks=tick_marks,
+    #          yticklabels=classes)
 
-    clf_bagging = BaggingClassifier()
-    clf_bagging = clf_bagging.fit(X_train, y_train)
-    print(clf_bagging.score(X_test,y_test))
-    return clf_bagging
+    # Rotate labels
 
-def data_split(data):
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j],
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.show()
+
+
+def data_split(data, gestures=None):
     """Split data into feature and target vectors and into train and test
     vectors.
 
     Args:
         data: pandas DataFrame or numpy array
+        gestures: list of strings
 
     Returns:
         X_train: pandas DataFrame or numpy array
@@ -469,27 +551,12 @@ def data_split(data):
         y_test: pandas DataFrame or numpy array
 
     """
-    X, Y = class_split(data,gestures=['open-close','empty','slide-horizontally'])
+    X, Y = class_split(data, gestures=gestures)
     X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state=42)
     return X_train, X_test, y_train, y_test
 
 
-def extra_trees(data):
-    """Extra trees classifier.
-
-    Args:
-        data: pandas DataFrame or numpy array
-
-    Returns:
-        clf_extra_tree: ExtraTreesClassifier object
-
-    """
-    clf_extra_tree = ExtraTreesClassifier()
-    clf_extra_tree = clf_extra_tree.fit(X_train, y_train)
-    print(clf_extra_tree.score(X_test,y_test))
-    return clf_extra_tree
-
-def get_data_list(divs=[4,10,20]):
+def get_data_list(divs=[4, 10, 20]):
     """Get or create data sets with various feature dimensions.
 
     Args:
@@ -504,8 +571,8 @@ def get_data_list(divs=[4,10,20]):
     if os.path.exists(DATA_DIR):
         for file in os.listdir(DATA_DIR):
             if file.endswith('.csv'):
-                df = pd.read_csv(os.path.join(DATA_DIR,file))
-                df = df.drop('Unnamed: 0',axis=1)
+                df = pd.read_csv(os.path.join(DATA_DIR, file))
+                df = df.drop('Unnamed: 0', axis=1)
                 data_sets.append(df)
     data_list = []
     for df in data_sets:
