@@ -26,7 +26,9 @@ Instruments are cued by the presence of faces. The `d` key can be used to debug,
 
 After activating the user interface with `o`, press `g` to get the hand gesture bounding box and `r` to start the recording loop. Data is saved to the `data` folder.
 
-See the data preparation and analysis [notebook](PrepareData.ipynb).
+## Prepare and analyze gesture data
+
+Use the data preparation and analysis [notebook](PrepareData.ipynb) for feature engineering and analysis.
 
 ## Todo
 
