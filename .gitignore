@@ -1,4 +1,12 @@
 *.DS_Store
-
+*.csv
+*.pkl*.csv
+*.pkl*.csv
+*.pkl*.csv
+*.pkl*.csv
+*.pkl*.csv
+*.pkl*.csv
+*.pkl*.csv
+*.pkl
 .ipynb_checkpoints/
 __pycache__/
