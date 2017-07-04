@@ -73,6 +73,7 @@ boolean isOpticalFlow = false;
 boolean isRecording = false;
 boolean isActivityBar = false;
 boolean isHandRect = false;
+boolean isClassifying = false;
 int framesPerGesture = 10;
 PVector[][] motionData = new PVector[framesPerGesture][handRectWidth*handRectHeight];
 
@@ -92,11 +93,8 @@ String[][] faceTexts = {
 int recordTimer = 10;
 PrintWriter output;
 int currRecordFrame = 0;
-<<<<<<< HEAD
-String[] gestureClassification = {"slide-horizontally"};
-=======
-String[] gestureClassification = {"empty"};
->>>>>>> 79bfdfdfb7fc2535a628be0bd64379d005b20979
+String[] gestureClassification = {"none"};
+String currGesture = "";
 
 void setup() {
   size(640, 480);
@@ -188,6 +186,7 @@ void sendOscNote(int facesCount, int mode, int mx1, int mx2, int activeColumn) {
   toSend.add(instrumentAmps[2]); // cello
   toSend.add(instrumentAmps[3]); // mod saw
   toSend.add(instrumentAmps[4]); // voices
+  toSend.add(currGesture);
   oscP5.send(toSend, sonicPi);
 }
 
@@ -217,7 +216,7 @@ void draw() {
     textSize(8);
     textFont(f, 16);
     drawController(faces); // Give each player an augmented reality controller
-    if (debugMode && isActivityBar) drawActivityBar(); // Optional
+    if (isActivityBar) drawActivityBar(); // Optional
   } 
   // Reset empty players 1 and 2 x-positions.
   if (mx1 == 0) mx1 = 320/2;
@@ -615,6 +614,7 @@ Rectangle[] dropDistantFaces(Rectangle[] faces) {
   }
   return faces;
 }
+
 void checkContinuity() {
   // TODO Complete this
 }
@@ -625,6 +625,7 @@ Rectangle[] removeRect(Rectangle[] faces, int item) {
   System.arraycopy(faces, item+1, outgoing, item, faces.length - (item + 1));
   return outgoing;
 }
+
 void readSigns(Rectangle[] faces, float controllerStartOffsetY) {
   /**
    * Read signs on users' controllers
@@ -678,8 +679,35 @@ void readSigns(Rectangle[] faces, float controllerStartOffsetY) {
           recordData(handRect, gestureClassification[0]);
         }
       }
+      if (isClassifying) {
+        try {
+          currGesture = classifyGesture(handRect);
+        text(currGesture, handRect.x, handRect.y + handRect.height + 10);
+        } catch(Exception e){
+          print(e);
+        }
+      }
     }
   }
+}
+
+String classifyGesture(Rectangle handRect) {
+  PVector motion = opencv.getTotalFlowInRegion(handRect.x, handRect.y, handRect.width, handRect.height);
+  print(motion.x+ "    ");
+  activityBarText[0] = str(motion.x);
+  activityBarText[1] = str(motion.y);
+  if ( motion.x > 4000) { 
+    currGesture = "slide_horizontal_right";
+  } else if (motion.x < -4000) {
+     currGesture = "slide_horizontal_left";
+  }
+  else if ( motion.y > 4000 || motion.y < -4000) {
+    currGesture = "slide_vertical";
+  }
+  else {
+    currGesture = "None";
+  }
+  return currGesture;
 }
 
 void recordData(Rectangle handRect, String gestureClass) {  
@@ -747,6 +775,7 @@ void keyPressed() {
     incrementMode(-1);
   } else if (key == 'b' || key == 'B') {
     brightPointMode = !brightPointMode;
+    isActivityBar = !isActivityBar;
     if (!brightPointMode) activeColumn = -1;
   } else if (key == 'd') {
     debugMode = !debugMode;
@@ -769,7 +798,9 @@ void keyPressed() {
     isRecording = !isRecording;
     if (isRecording) saveData(gestureClassification[0]);
   } else if (key == 'g') {
-    isHandRect = !isHandRect;
+    isHandRect = !isHandRect;    
+  } else if (key == 'c') {
+    isClassifying = !isClassifying;
   }
   if (value == 0) {
     value = 255;
